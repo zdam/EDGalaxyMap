@@ -1,0 +1,370 @@
+<html>
+	<head>
+		<title>ED Galaxy Map</title>
+		<style>
+            body 
+            {
+	            font-family: Monospace;
+	            font-weight: bold;	            
+	            margin: 0px;
+	            overflow: hidden;
+            }
+            canvas { width: 100%; height: 100% }
+            #container
+            {
+            }
+            #controls
+            {
+              top: 10px;
+              left: 10px;
+              position: absolute;
+              width: 100%;
+              color: white;
+            }
+        </style>
+	</head>
+	<body>
+
+        <div id="container">
+            <div id="controls">
+                <label>Left Mouse: Select, Hold to Rotate. Ctrl + Left Mouse: Select 2nd object for distance calculation. Right Mouse: Pan. Mouse Wheel: Zoom</label><br />
+                <label id="label1">Distance:</label><label id="labelDistance"></label>
+                <!--<input type="text" id="input1" />
+                <button id="button1">Clicky</button>-->
+            </div>
+        </div>
+        <script src="js/jquery-2.1.1.min.js"></script>
+		<script src="js/three.min.js"></script>
+        <script src="js/controls/TrackballControls.js"></script>
+		<script src="js/controls/OrbitControls.js"></script>
+
+        <script src="js/Detector.js"></script>
+		<script src="js/KeyboardState.js"></script>
+		<script src="js/libs/stats.min.js"></script>		
+		<script src="system-data.js"></script>		
+
+        <!-- load the font files -->
+
+        <script src="fonts/gentilis_bold.typeface.js"></script>
+        <script src="fonts/gentilis_regular.typeface.js"></script>
+        <script src="fonts/optimer_bold.typeface.js"></script>
+        <script src="fonts/optimer_regular.typeface.js"></script>
+        <script src="fonts/helvetiker_bold.typeface.js"></script>
+        <script src="fonts/helvetiker_regular.typeface.js"></script>
+        <script src="fonts/droid/droid_sans_regular.typeface.js"></script>
+        <script src="fonts/droid/droid_sans_bold.typeface.js"></script>
+        <script src="fonts/droid/droid_serif_regular.typeface.js"></script>
+        <script src="fonts/droid/droid_serif_bold.typeface.js"></script>
+
+		<script>
+
+            // Todo list
+            // Enable selection of a system
+            // Enable selection of 2 systems, then display distance between them
+            // Add larger invisble sphere mesh for each location so mouse selection is easier
+
+			var container, stats;
+			var camera, controls, scene, renderer;			
+			var projector, mouse = { x: 0, y: 0 }, INTERSECTED;
+			var firstSelection, secondSelection;
+
+			var unselectedColor = 0xffffff;
+			var hoverColor = 0xffff00;
+			var firstSelectionColor = 0x00ff00;
+			var secondSelectionColor = 0x0000ff;
+
+			var keyboard = new KeyboardState();
+			var ctrlPressed = false;
+
+			init();
+			animate();
+
+			function init() {
+
+				var sysInfo = readSystemData();
+
+				scene = new THREE.Scene();
+			    //scene.fog = new THREE.FogExp2( 0xcccccc, 0.002 );
+                				
+				initCamera(scene);
+				initScene(scene, sysInfo);
+				initControls(camera);
+				initRenderer();
+				initHandlers();
+
+			}
+
+			function animate() {
+			    requestAnimationFrame(animate);
+			    update();
+			    render();
+			    controls.update();
+			}
+
+			function initCamera(scene) {
+			    camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 1, 100000);
+			    scene.add(camera);
+
+			    camera.position.z = 500;
+			    camera.lookAt(scene.position);			    
+			}
+
+			function initScene(scene, sysInfo) {
+			    // world
+			    var geometry = new THREE.SphereGeometry(3, 6, 6);
+
+			    var scale = 10;
+
+			    for (var i = 0; i < sysInfo.length; i++) {
+
+			        var material = new THREE.MeshLambertMaterial({ color: unselectedColor, shading: THREE.FlatShading });
+
+			        var mesh = new THREE.Mesh(geometry, material);
+			        mesh.position.x = (sysInfo[i].x) * scale;
+			        mesh.position.y = (sysInfo[i].y) * scale;
+			        mesh.position.z = (sysInfo[i].z) * scale;
+			        mesh.updateMatrix();
+			        mesh.matrixAutoUpdate = false;
+			        mesh.sysInfo = sysInfo[i];
+
+			        scene.add(mesh);
+
+			        var textOptions = {
+			            size: 10,
+			            height: 1
+			        };
+			        var label = new THREE.TextGeometry(sysInfo[i].system, textOptions);
+			        var labelMesh = new THREE.Mesh(label, material);
+			        labelMesh.position.x = (sysInfo[i].x) * scale;
+			        labelMesh.position.y = (sysInfo[i].y - 2) * scale;
+			        labelMesh.position.z = (sysInfo[i].z) * scale;
+			        labelMesh.updateMatrix();
+			        labelMesh.matrixAutoUpdate = false;
+			        labelMesh.sysInfo = sysInfo[i];
+
+			        scene.add(labelMesh);
+			    }
+
+			    // lights
+			    light = new THREE.DirectionalLight(0xffffff);
+			    light.position.set(1, 1, 1);
+			    scene.add(light);
+
+			    light = new THREE.DirectionalLight(0x002288);
+			    light.position.set(-1, -1, -1);
+			    scene.add(light);
+
+			    light = new THREE.AmbientLight(0x222222);
+			    scene.add(light);
+
+			    // initialize object to perform world/screen calculations
+			    projector = new THREE.Projector();
+			}
+
+			function initControls(camera) {
+			    initTrackballControls(camera);
+			    //initOrbitControls(camera);
+			}
+
+			function initTrackballControls(camera) {
+			    controls = new THREE.TrackballControls(camera);
+
+			    controls.rotateSpeed = 1.0;
+			    controls.zoomSpeed = 1.2;
+			    controls.panSpeed = 0.8;
+
+			    controls.noZoom = false;
+			    controls.noPan = false;
+
+			    controls.staticMoving = true;
+			    controls.dynamicDampingFactor = 0.3;
+
+			    controls.keys = [65, 83, 68];
+
+			    controls.addEventListener('change', render);
+			}
+
+			function initOrbitControls(camera) {
+			    controls = new THREE.OrbitControls(camera);
+			    controls.damping = 0.2;
+			    controls.addEventListener('change', render);
+			}
+
+			function initRenderer() {
+			    renderer = new THREE.WebGLRenderer({ antialias: false });
+			    //renderer.setClearColor( scene.fog.color, 1 );
+			    renderer.setSize(window.innerWidth, window.innerHeight);
+
+			    container = document.getElementById('container');
+			    container.appendChild(renderer.domElement);
+
+			    stats = new Stats();
+			    stats.domElement.style.position = 'absolute';
+			    stats.domElement.style.top = '0px';
+			    stats.domElement.style.right = '0px';
+			    stats.domElement.style.zIndex = 100;
+			    container.appendChild(stats.domElement);
+			}
+
+			function initHandlers() {
+			    // when the mouse moves, call the given function
+			    document.addEventListener('mousemove', onDocumentMouseMove, false);
+			    document.addEventListener('mousedown', onDocumentMouseDown, false);
+
+			    window.addEventListener('resize', onWindowResize, false);
+			}
+
+			function onDocumentMouseDown(event) {		    
+			    
+			    if (INTERSECTED) {
+
+			        INTERSECTED.material.color.setHex(unselectedColor);
+
+			        if (ctrlPressed) {
+			            if (secondSelection != null) {
+			                setColor(secondSelection, unselectedColor);			                
+			            }
+			            secondSelection = INTERSECTED;
+			            setColor(secondSelection, secondSelectionColor);			            			            
+			        } else {
+			            if (firstSelection != null) {
+			                setColor(firstSelection, unselectedColor);			                
+			            }
+			            firstSelection = INTERSECTED;
+			            setColor(firstSelection, firstSelectionColor);
+			            console.log(firstSelection.sysInfo.system + "set to selected color");
+			        }
+			        
+			        if (firstSelection && secondSelection) {
+			            var d = calculateDistance(firstSelection.sysInfo, secondSelection.sysInfo);
+			            $('#labelDistance').text(d);
+			        }
+
+			        INTERSECTED = null;
+			    }
+			}
+
+			function onDocumentMouseMove(event) {
+			    // the following line would stop any other event handler from firing
+			    // (such as the mouse's TrackballControls)
+			    // event.preventDefault();
+
+			    // update the mouse variable
+			    mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+			    mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+			}
+
+			function onWindowResize() {
+
+				camera.aspect = window.innerWidth / window.innerHeight;
+				camera.updateProjectionMatrix();
+
+				renderer.setSize( window.innerWidth, window.innerHeight );
+
+				controls.handleResize();
+			}
+
+			function update() {
+
+			    keyboard.update();
+
+			    ctrlPressed = keyboard.pressed("ctrl");
+			    //console.log(ctrlPressed);
+
+			    // find intersections
+
+			    // create a Ray with origin at the mouse position
+			    //   and direction into the scene (camera direction)
+			    var vector = new THREE.Vector3(mouse.x, mouse.y, 1);
+			    projector.unprojectVector(vector, camera);
+			    var ray = new THREE.Raycaster(camera.position, vector.sub(camera.position).normalize());
+
+                // debug arrows
+			    //var dir = new THREE.Vector3(mouse.x, mouse.y, 1);
+			    //var origin = new THREE.Vector3(0, 0, 0);
+			    //var length = 100;
+			    //var hex = 0xffff00;
+			    //var arrowHelper = new THREE.ArrowHelper(dir, origin, length, hex);
+			    //scene.add(arrowHelper);
+
+
+			    // create an array containing all objects in the scene with which the ray intersects
+			    var intersects = ray.intersectObjects(scene.children);
+
+			    // INTERSECTED = the object in the scene currently closest to the camera 
+			    //		and intersected by the Ray projected from the mouse position 	
+
+			    // if there is one (or more) intersections
+			    if (intersects.length > 0) {
+			        // if the closest object intersected is not the currently stored intersection object
+			        if (intersects[0].object != INTERSECTED) {
+			            // restore previous intersection object (if it exists) to its original color
+			            if (INTERSECTED) {
+                            resetColor(INTERSECTED)			                
+			                console.log(INTERSECTED.sysInfo.system + "set to unselected colorA");
+			            }
+			                
+			            // store reference to closest object as current intersection object
+			            INTERSECTED = intersects[0].object;
+			            // set a new color for closest object'
+			            setColor(INTERSECTED, hoverColor);			            
+			            console.log(INTERSECTED.sysInfo.system);
+			            console.log(INTERSECTED.sysInfo.system + "set to hover color");
+			        }
+			    }
+			    else // there are no intersections
+			    {
+			        // restore previous intersection object (if it exists) to its original color only if it was not selected
+			        if (INTERSECTED) {
+			            resetColor(INTERSECTED);
+			        }
+
+			        // remove previous intersection object reference by setting current intersection object to "nothing"
+			        INTERSECTED = null;
+			    }
+			}
+
+			function render() {
+
+				renderer.render( scene, camera );
+				stats.update();
+			}
+
+			function readSystemData() {
+
+			    var sysInfo = [];
+
+			    for (var i = 0; i < sysData.length; i++) {
+			        var parts = sysData[i];
+
+			        if (!isNaN(parts[2]) && !isNaN(parts[3]) && !isNaN(parts[4])
+                        && +parts[2] != 0 && +parts[3] != 0 && +parts[4] != 0) {
+			            var newSysInfo = { "system": parts[0], "station": parts[1], "x": +parts[2], "y": +parts[3], "z": +parts[4] };
+			            sysInfo.push(newSysInfo);
+			        }
+			    }
+			    return sysInfo;
+			}
+
+			function calculateDistance(first, second) {
+			    // d = sqrt((x2-x1)^2 + (y2-y1)^2 + (z2-z1)^2)
+			    var d = Math.sqrt(((first.x - second.x) * (first.x - second.x)) + ((first.y - second.y) * (first.y - second.y)) + ((first.z - second.z) * (first.z - second.z)));
+			    return d;
+			}
+
+			function setColor(mesh, color) {
+			    mesh.prevColor = mesh.material.color.getHex();
+			    mesh.material.color.setHex(color);
+			}
+
+			function resetColor(mesh) {
+			    if (mesh.prevColor) {
+			        mesh.material.color.setHex(mesh.prevColor);
+			    } else {
+			        mesh.material.color.setHex(unselectedColor);
+			    }
+			    
+			}
+		</script>
+	</body>
+</html>

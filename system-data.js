@@ -1,0 +1,18 @@
+var sysData = [
+['Aulin','Aulin Enterprise','-19.5','32.5','4.72','http://www.stellar-database.com/Scripts/search_star.exe?ID=104100'],
+['BD+47 2112','Olivas Settlement','-14.8','33.5','-0.11','http://www.stellar-database.com/Scripts/search_star.exe?ID=197900'],
+['Bolg','Moxons Mojo','-7.86','34.6','2.13','http://www.stellar-database.com/Scripts/search_star.exe?ID=94100'],
+['Chi Herculis','Gorbatko Reserve','-39.63','12.77','30.67',''],
+['DN Draconis','-','-22.3','0.82','28',''],
+['Eranin','Azeban City','-23.18','37.12','-1.191','http://www.stellar-database.com/Scripts/search_star.exe?ID=100900'],
+['h Draconis','Brislington','-39.39','29.24','-3.845','http://www.stellar-database.com/Scripts/search_star.exe?ID=117400'],
+['i Bootis','Chango Dock','-22.4','34.9','4.02','http://www.stellar-database.com/Scripts/search_star.exe?ID=200200'],
+['LFT 1361','-','-38.8','24.7','-0.49',''],
+['LFT 992','Szulkin Mines','-749','42.3','0.71','http://www.stellar-database.com/Scripts/search_star.exe?ID=195700'],
+['LP 271-25','-','-31.9','7.34','10.5','http://www.stellar-database.com/Scripts/search_star.exe?ID=99700'],
+['Opala','Romanenko Estate','-25.5','35.3','9.29','http://www.stellar-database.com/Scripts/search_star.exe?ID=201400'],
+['Wyrd','Vonarburg Co-Operative','-11.6','31.5','-3.91','http://www.stellar-database.com/Scripts/search_star.exe?ID=195800'],
+['Wolf 359','3.902','6.478','-1.896',''],
+['Wolf 1061','-0.829','5.451','12.77',''],
+['Procyon','','6.22','2.674','-9.179',''],
+];
