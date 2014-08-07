@@ -15,11 +15,13 @@
             }
             #controls
             {
+              /*background-color: green;*/
               top: 10px;
               left: 10px;
               position: absolute;
               width: 100%;
               color: white;
+              z-index:5;
             }
         </style>
 	</head>
@@ -29,8 +31,11 @@
             <div id="controls">
                 <label>Left Mouse: Select, Hold to Rotate. Ctrl + Left Mouse: Select 2nd object for distance calculation. Right Mouse: Pan. Mouse Wheel: Zoom</label><br />
                 <label id="label1">Distance:</label><label id="labelDistance"></label>
-                <!--<input type="text" id="input1" />
-                <button id="button1">Clicky</button>-->
+                <br /><select id="ddlSystemsFrom"></select>
+                <br /><select id="ddlSystemsTo" ></select>
+                <br /><button id="button1">Add more systems. Takes 30 seconds.</button>
+                <!--<br /><input id="txtInput" />-->
+
             </div>
         </div>
         <script src="js/jquery-2.1.1.min.js"></script>
@@ -40,9 +45,10 @@
 
         <script src="js/Detector.js"></script>
 		<script src="js/KeyboardState.js"></script>
-		<script src="js/libs/stats.min.js"></script>		
-		<script src="system-data.js"></script>		
-
+        <script src="js/libs/stats.min.js"></script>
+		<script src="js/underscore-min.js"></script>		
+		<script src="pos-and-name.js"></script>		
+        
         <!-- load the font files -->
 
         <script src="fonts/gentilis_bold.typeface.js"></script>
@@ -59,19 +65,54 @@
 		<script>
 
             // Todo list
-            // Enable selection of a system
-            // Enable selection of 2 systems, then display distance between them
+            // Done. Enable selection of a system
+            // Done. Enable selection of 2 systems, then display distance between them
+            // Add dropdowns to allow selection of systems
+            // Draw a line between selected systems
             // Add larger invisble sphere mesh for each location so mouse selection is easier
+
+            // Handler for .ready() called.            
+            $(function () {
+                
+
+                $("#button1").click(function () {
+                    
+                    setTimeout(function () {
+                        var raInfo = readRaData();
+                        addSysInfoToScene(scene, raInfo);                        
+                        addSysInfoToDropDown(raInfo, '#ddlSystemsFrom');
+                        addSysInfoToDropDown(raInfo, '#ddlSystemsTo');
+                    }, 100)
+                    $("#button1").hide();
+                });
+
+                $("#ddlSystemsFrom").change(function () {
+
+                });
+
+                $("#ddlSystemsTo").change(function () {
+
+                });
+
+                // Dropdowns aren't implemented yet so hide them
+                $("#ddlSystemsFrom").hide();
+                $("#ddlSystemsTo").hide();
+            });
+
 
 			var container, stats;
 			var camera, controls, scene, renderer;			
-			var projector, mouse = { x: 0, y: 0 }, INTERSECTED;
+			var projector, mouse = { x: 0, y: 0 }, IntersectedObject;
 			var firstSelection, secondSelection;
 
 			var unselectedColor = 0xffffff;
 			var hoverColor = 0xffff00;
 			var firstSelectionColor = 0x00ff00;
 			var secondSelectionColor = 0x0000ff;
+			var unselectedMaterial = new THREE.MeshLambertMaterial({ color: unselectedColor, shading: THREE.FlatShading });
+			var hoverMaterial = new THREE.MeshLambertMaterial({ color: hoverColor, shading: THREE.FlatShading });
+			var firstSelectionMaterial = new THREE.MeshLambertMaterial({ color: firstSelectionColor, shading: THREE.FlatShading });
+			var secondSelectionMaterial = new THREE.MeshLambertMaterial({ color: secondSelectionColor, shading: THREE.FlatShading });
 
 			var keyboard = new KeyboardState();
 			var ctrlPressed = false;
@@ -81,16 +122,19 @@
 
 			function init() {
 
-				var sysInfo = readSystemData();
+				var xyzInfo = readXyzData();
 
 				scene = new THREE.Scene();
-			    //scene.fog = new THREE.FogExp2( 0xcccccc, 0.002 );
                 				
 				initCamera(scene);
-				initScene(scene, sysInfo);
+				initScene(scene);
+				addSysInfoToScene(scene, xyzInfo);
 				initControls(camera);
 				initRenderer();
 				initHandlers();
+
+				addSysInfoToDropDown(xyzInfo, '#ddlSystemsFrom');
+				addSysInfoToDropDown(xyzInfo, '#ddlSystemsTo');
 
 			}
 
@@ -105,19 +149,25 @@
 			    camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 1, 100000);
 			    scene.add(camera);
 
-			    camera.position.z = 500;
+			    camera.position.z = 900;
 			    camera.lookAt(scene.position);			    
 			}
 
-			function initScene(scene, sysInfo) {
-			    // world
-			    var geometry = new THREE.SphereGeometry(3, 6, 6);
+			function addSysInfoToDropDown(sysInfo, ddl) {
+			    var sorted = _.sortBy(sysInfo, function (o) { return o.system; });
 
+			    $.each(sorted, function (index, value) {
+			        $(ddl).append($('<option/>', { value: value.system, text: value.system }));
+			    });
+			}
+
+			function addSysInfoToScene(scene, sysInfo) {
 			    var scale = 10;
 
-			    for (var i = 0; i < sysInfo.length; i++) {
+			    var geometry = new THREE.SphereGeometry(3, 6, 6);
+			    var material = unselectedMaterial;
 
-			        var material = new THREE.MeshLambertMaterial({ color: unselectedColor, shading: THREE.FlatShading });
+			    for (var i = 0; i < sysInfo.length; i++) {
 
 			        var mesh = new THREE.Mesh(geometry, material);
 			        mesh.position.x = (sysInfo[i].x) * scale;
@@ -129,9 +179,22 @@
 
 			        scene.add(mesh);
 
+                    // Billboard sprites for names. 
+			        //var spritey = makeTextSprite(sysInfo[i].system,
+                    //    {
+                    //        fontsize: 32,
+                    //        fontface: "Georgia",
+                    //        borderColor: { r: 0, g: 0, b: 255, a: 1.0 }
+                    //    });
+			        //spritey.position.set(sysInfo[i].x * scale, sysInfo[i].y * scale, sysInfo[i].z * scale);
+			        //spritey.sysInfo = sysInfo[i];
+			        //scene.add(spritey);
+
+                    // real 3d objects for names
 			        var textOptions = {
 			            size: 10,
-			            height: 1
+			            height: 1,
+                        curveSegments: 2
 			        };
 			        var label = new THREE.TextGeometry(sysInfo[i].system, textOptions);
 			        var labelMesh = new THREE.Mesh(label, material);
@@ -141,9 +204,18 @@
 			        labelMesh.updateMatrix();
 			        labelMesh.matrixAutoUpdate = false;
 			        labelMesh.sysInfo = sysInfo[i];
-
 			        scene.add(labelMesh);
 			    }
+			}
+
+			function initScene(scene) {
+			    // world
+
+			    var gridXZ = new THREE.GridHelper(1000, 200);
+			    gridXZ.setColors(new THREE.Color(0xf5f5f5), new THREE.Color(0xf5f5f5));
+			    gridXZ.position.set(0, 0, 0);
+			    scene.add(gridXZ);
+			    
 
 			    // lights
 			    light = new THREE.DirectionalLight(0xffffff);
@@ -216,31 +288,30 @@
 
 			function onDocumentMouseDown(event) {		    
 			    
-			    if (INTERSECTED) {
-
-			        INTERSECTED.material.color.setHex(unselectedColor);
+			    if (IntersectedObject) {		        
 
 			        if (ctrlPressed) {
 			            if (secondSelection != null) {
-			                setColor(secondSelection, unselectedColor);			                
+			                setColor(secondSelection, unselectedMaterial);
 			            }
-			            secondSelection = INTERSECTED;
-			            setColor(secondSelection, secondSelectionColor);			            			            
+			            secondSelection = IntersectedObject;
+			            setColor(secondSelection, secondSelectionMaterial);			            			            
 			        } else {
 			            if (firstSelection != null) {
-			                setColor(firstSelection, unselectedColor);			                
+			                setColor(firstSelection, unselectedMaterial);
 			            }
-			            firstSelection = INTERSECTED;
-			            setColor(firstSelection, firstSelectionColor);
+			            firstSelection = IntersectedObject;
+			            setColor(firstSelection, firstSelectionMaterial);
 			            console.log(firstSelection.sysInfo.system + "set to selected color");
 			        }
 			        
 			        if (firstSelection && secondSelection) {
 			            var d = calculateDistance(firstSelection.sysInfo, secondSelection.sysInfo);
-			            $('#labelDistance').text(d);
+
+			            $('#labelDistance').text(d.toFixed(2));
 			        }
 
-			        INTERSECTED = null;
+			        IntersectedObject = null;
 			    }
 			}
 
@@ -291,36 +362,36 @@
 			    // create an array containing all objects in the scene with which the ray intersects
 			    var intersects = ray.intersectObjects(scene.children);
 
-			    // INTERSECTED = the object in the scene currently closest to the camera 
+			    // IntersectedObject = the object in the scene currently closest to the camera 
 			    //		and intersected by the Ray projected from the mouse position 	
 
 			    // if there is one (or more) intersections
 			    if (intersects.length > 0) {
-			        // if the closest object intersected is not the currently stored intersection object
-			        if (intersects[0].object != INTERSECTED) {
+			        // if the closest object intersected is not the currently stored intersection object and has sysInfo (ie we want to be able to select it)
+			        if (intersects[0].object != IntersectedObject && intersects[0].object.sysInfo) {
 			            // restore previous intersection object (if it exists) to its original color
-			            if (INTERSECTED) {
-                            resetColor(INTERSECTED)			                
-			                console.log(INTERSECTED.sysInfo.system + "set to unselected colorA");
+			            if (IntersectedObject) {
+                            resetColor(IntersectedObject)			                
+			                console.log(IntersectedObject.sysInfo.system + "set to unselected colorA");
 			            }
 			                
 			            // store reference to closest object as current intersection object
-			            INTERSECTED = intersects[0].object;
+			            IntersectedObject = intersects[0].object;
 			            // set a new color for closest object'
-			            setColor(INTERSECTED, hoverColor);			            
-			            console.log(INTERSECTED.sysInfo.system);
-			            console.log(INTERSECTED.sysInfo.system + "set to hover color");
+			            setColor(IntersectedObject, hoverMaterial);			            
+			            console.log(IntersectedObject.sysInfo.system);
+			            console.log(IntersectedObject.sysInfo.system + "set to hover color");
 			        }
 			    }
 			    else // there are no intersections
 			    {
 			        // restore previous intersection object (if it exists) to its original color only if it was not selected
-			        if (INTERSECTED) {
-			            resetColor(INTERSECTED);
+			        if (IntersectedObject) {
+			            resetColor(IntersectedObject);
 			        }
 
 			        // remove previous intersection object reference by setting current intersection object to "nothing"
-			        INTERSECTED = null;
+			        IntersectedObject = null;
 			    }
 			}
 
@@ -330,12 +401,13 @@
 				stats.update();
 			}
 
-			function readSystemData() {
+			function readXyzData() {
 
 			    var sysInfo = [];
 
-			    for (var i = 0; i < sysData.length; i++) {
-			        var parts = sysData[i];
+                // handle data already in galactic xyz co-ords
+			    for (var i = 0; i < xyzData.length; i++) {
+			        var parts = xyzData[i];
 
 			        if (!isNaN(parts[2]) && !isNaN(parts[3]) && !isNaN(parts[4])
                         && +parts[2] != 0 && +parts[3] != 0 && +parts[4] != 0) {
@@ -343,8 +415,69 @@
 			            sysInfo.push(newSysInfo);
 			        }
 			    }
+
 			    return sysInfo;
 			}
+
+			function readRaData() {
+			    var sysInfo = [];
+
+			    // handle data in ra format
+			    for (var i = 0; i < raData.length; i++) {
+			        var parts = raData[i];
+
+			        var o = {
+			            "RA_hr": +parts[1],
+			            "RA_min": +parts[2],
+			            "RA_sec": +parts[3],
+			            "Dec_deg": +parts[4],
+			            "Dec_arcmin": +parts[5],
+			            "Dec_arcsec": +parts[6],
+			            "Distance": +parts[7],
+			            "Name": parts[8]
+			        };
+
+			        var xyz = raToXyz(o);
+
+			        // note we do some flipping to match Elite Dangerous co-ord system
+
+			        var newSysInfo = { "system": xyz.name, "station": "", "x": xyz.y * -1, "y": xyz.z, "z": xyz.x };
+			        sysInfo.push(newSysInfo);
+			    }
+			    return sysInfo;
+			}
+
+			function raToXyz(pos) {			    
+			    var	theta, phi;
+			    var	dec_sign;
+			    var	cx, cy, cz;
+
+			    if (pos.Distance == 0.0)
+			    {
+			        x = y = z = 0.0;	// special case for our sun
+			        return {"x": x, "y": y, "z": z, "name": pos.Name };
+			    }
+
+			    theta = (pos.RA_hr + pos.RA_min/60.0 + pos.RA_sec/3600.0) * Math.PI / 12.0;
+
+			    if (pos.Dec_deg < 0)
+			        dec_sign = -1;
+			    else
+			        dec_sign = 1;
+			    phi = (90.0 - (pos.Dec_deg + pos.Dec_arcmin*dec_sign/60.0 +
+                        pos.Dec_arcsec*dec_sign/3600.0)) * Math.PI / 180.0;
+
+			    cx = pos.Distance * Math.cos(theta) * Math.sin(phi);
+			    cy = pos.Distance * Math.sin(theta) * Math.sin(phi);
+			    cz = pos.Distance * Math.cos(phi);
+
+    	        x = -0.0672*cx - 0.8727*cy - 0.4835*cz;
+		        y =  0.4927*cx - 0.4504*cy + 0.7445*cz;
+		        z = -0.8676*cx - 0.1884*cy + 0.4602*cz;
+                
+		        return { "x": x, "y": y, "z": z, "name": pos.Name };			    
+			}
+
 
 			function calculateDistance(first, second) {
 			    // d = sqrt((x2-x1)^2 + (y2-y1)^2 + (z2-z1)^2)
@@ -352,18 +485,91 @@
 			    return d;
 			}
 
-			function setColor(mesh, color) {
-			    mesh.prevColor = mesh.material.color.getHex();
-			    mesh.material.color.setHex(color);
+			function setColor(mesh, material) {
+			    mesh.prevMaterial = mesh.material;
+			    mesh.material = material;
 			}
 
 			function resetColor(mesh) {
-			    if (mesh.prevColor) {
-			        mesh.material.color.setHex(mesh.prevColor);
+
+			    if (mesh.prevMaterial) {
+			        mesh.material = mesh.prevMaterial;
 			    } else {
-			        mesh.material.color.setHex(unselectedColor);
+			        mesh.matermail = unselectedMaterial;
 			    }
 			    
+			}
+
+			function makeTextSprite(message, parameters) {
+			    if (parameters === undefined) parameters = {};
+
+			    var fontface = parameters.hasOwnProperty("fontface") ?
+                    parameters["fontface"] : "Arial";
+
+			    var fontsize = parameters.hasOwnProperty("fontsize") ?
+                    parameters["fontsize"] : 18;
+
+			    var borderThickness = parameters.hasOwnProperty("borderThickness") ?
+                    parameters["borderThickness"] : 4;
+
+			    var borderColor = parameters.hasOwnProperty("borderColor") ?
+                    parameters["borderColor"] : { r: 0, g: 0, b: 0, a: 1.0 };
+
+			    var backgroundColor = parameters.hasOwnProperty("backgroundColor") ?
+                    parameters["backgroundColor"] : { r: 255, g: 255, b: 255, a: 1.0 };
+
+			    //var spriteAlignment = THREE.SpriteAlignment.topLeft;
+
+			    var canvas = document.createElement('canvas');
+			    var context = canvas.getContext('2d');
+			    context.font = "Bold " + fontsize + "px " + fontface;
+
+			    // get size data (height depends only on font size)
+			    var metrics = context.measureText(message);
+			    var textWidth = metrics.width;
+
+			    // background color
+			    context.fillStyle = "rgba(" + backgroundColor.r + "," + backgroundColor.g + ","
+                                              + backgroundColor.b + "," + backgroundColor.a + ")";
+			    // border color
+			    context.strokeStyle = "rgba(" + borderColor.r + "," + borderColor.g + ","
+                                              + borderColor.b + "," + borderColor.a + ")";
+
+			    context.lineWidth = borderThickness;
+			    roundRect(context, borderThickness / 2, borderThickness / 2, textWidth + borderThickness, fontsize * 1.4 + borderThickness, 6);
+			    // 1.4 is extra height factor for text below baseline: g,j,p,q.
+
+			    // text color
+			    context.fillStyle = "rgba(0, 0, 0, 1.0)";
+
+			    context.fillText(message, borderThickness, fontsize + borderThickness);
+
+			    // canvas contents will be used for a texture
+			    var texture = new THREE.Texture(canvas)
+			    texture.needsUpdate = true;
+
+			    //var spriteMaterial = new THREE.SpriteMaterial({ map: texture, useScreenCoordinates: false, alignment: spriteAlignment });
+			    var spriteMaterial = new THREE.SpriteMaterial({ map: texture, useScreenCoordinates: false});//, alignment: spriteAlignment });
+			    var sprite = new THREE.Sprite(spriteMaterial);
+			    sprite.scale.set(100, 50, 1.0);
+			    return sprite;
+			}
+
+			// function for drawing rounded rectangles
+			function roundRect(ctx, x, y, w, h, r) {
+			    ctx.beginPath();
+			    ctx.moveTo(x + r, y);
+			    ctx.lineTo(x + w - r, y);
+			    ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+			    ctx.lineTo(x + w, y + h - r);
+			    ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+			    ctx.lineTo(x + r, y + h);
+			    ctx.quadraticCurveTo(x, y + h, x, y + h - r);
+			    ctx.lineTo(x, y + r);
+			    ctx.quadraticCurveTo(x, y, x + r, y);
+			    ctx.closePath();
+			    ctx.fill();
+			    ctx.stroke();
 			}
 		</script>
 	</body>
