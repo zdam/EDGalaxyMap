@@ -31,9 +31,9 @@
             <div id="controls">
                 <label>Left Mouse: Select, Hold to Rotate. Ctrl + Left Mouse: Select 2nd object for distance calculation. Right Mouse: Pan. Mouse Wheel: Zoom</label><br />
                 <label id="label1">Distance:</label><label id="labelDistance"></label>
-                <br /><select id="ddlSystemsFrom"></select>
-                <br /><select id="ddlSystemsTo" ></select>
-                <br /><button id="button1">Add more systems. Takes 30 seconds.</button>
+                <br /><select id="ddlSystemsFrom"><option></option></select>
+                <br /><select id="ddlSystemsTo" ><option></option></select>
+                <br /><button id="btnMoreSystems">Add more systems. Takes 30 seconds.</button>
                 <!--<br /><input id="txtInput" />-->
 
             </div>
@@ -63,48 +63,50 @@
         <script src="fonts/droid/droid_serif_bold.typeface.js"></script>
 
 		<script>
+            // Handler for .ready() called.            
+            $(function () {
+
+                $("#btnMoreSystems").click(function () {
+
+                    setTimeout(function () {
+                        var raInfo = readRaData();
+                        addSysInfoToScene(scene, raInfo);
+                        addSysInfoToDropDown(raInfo, '#ddlSystemsFrom');
+                        addSysInfoToDropDown(raInfo, '#ddlSystemsTo');
+                    }, 100)
+                    $("#btnMoreSystems").hide();
+                });
+
+                $("#ddlSystemsFrom").change(function () {
+                    var systemName = $("#ddlSystemsFrom option:selected").text();
+                    applySelectionToSystem(selectionInfo, 'firstSelection', systemName, firstSelectionMaterial);
+                });
+
+                $("#ddlSystemsTo").change(function () {
+                    var systemName = $("#ddlSystemsTo option:selected").text();
+                    applySelectionToSystem(selectionInfo, 'secondSelection', systemName, secondSelectionMaterial);
+                });
+            });
 
             // Todo list
             // Done. Enable selection of a system
             // Done. Enable selection of 2 systems, then display distance between them
-            // Add dropdowns to allow selection of systems
+            // Done. Add dropdowns to allow selection of systems
             // Draw a line between selected systems
             // Add larger invisble sphere mesh for each location so mouse selection is easier
 
-            // Handler for .ready() called.            
-            $(function () {
-                
-
-                $("#button1").click(function () {
-                    
-                    setTimeout(function () {
-                        var raInfo = readRaData();
-                        addSysInfoToScene(scene, raInfo);                        
-                        addSysInfoToDropDown(raInfo, '#ddlSystemsFrom');
-                        addSysInfoToDropDown(raInfo, '#ddlSystemsTo');
-                    }, 100)
-                    $("#button1").hide();
-                });
-
-                $("#ddlSystemsFrom").change(function () {
-
-                });
-
-                $("#ddlSystemsTo").change(function () {
-
-                });
-
-                // Dropdowns aren't implemented yet so hide them
-                $("#ddlSystemsFrom").hide();
-                $("#ddlSystemsTo").hide();
-            });
-
-
+            var lines = [];
 			var container, stats;
 			var camera, controls, scene, renderer;			
-			var projector, mouse = { x: 0, y: 0 }, IntersectedObject;
-			var firstSelection, secondSelection;
+			var projector, mouse = { x: 0, y: 0 };
 
+			var selectionInfo = {
+			    firstSelection: {},
+                secondSelection: {},
+                currentIntersectingObject: {}
+			};
+
+			var scale = 10;
 			var unselectedColor = 0xffffff;
 			var hoverColor = 0xffff00;
 			var firstSelectionColor = 0x00ff00;
@@ -161,8 +163,7 @@
 			    });
 			}
 
-			function addSysInfoToScene(scene, sysInfo) {
-			    var scale = 10;
+			function addSysInfoToScene(scene, sysInfo) {			    
 
 			    var geometry = new THREE.SphereGeometry(3, 6, 6);
 			    var material = unselectedMaterial;
@@ -176,6 +177,7 @@
 			        mesh.updateMatrix();
 			        mesh.matrixAutoUpdate = false;
 			        mesh.sysInfo = sysInfo[i];
+			        mesh.meshType = 'sphere';
 
 			        scene.add(mesh);
 
@@ -204,6 +206,11 @@
 			        labelMesh.updateMatrix();
 			        labelMesh.matrixAutoUpdate = false;
 			        labelMesh.sysInfo = sysInfo[i];
+			        labelMesh.meshType = 'text';
+
+			        mesh.sisterMesh = labelMesh;
+			        labelMesh.sisterMesh = mesh;
+
 			        scene.add(labelMesh);
 			    }
 			}
@@ -288,31 +295,7 @@
 
 			function onDocumentMouseDown(event) {		    
 			    
-			    if (IntersectedObject) {		        
-
-			        if (ctrlPressed) {
-			            if (secondSelection != null) {
-			                setColor(secondSelection, unselectedMaterial);
-			            }
-			            secondSelection = IntersectedObject;
-			            setColor(secondSelection, secondSelectionMaterial);			            			            
-			        } else {
-			            if (firstSelection != null) {
-			                setColor(firstSelection, unselectedMaterial);
-			            }
-			            firstSelection = IntersectedObject;
-			            setColor(firstSelection, firstSelectionMaterial);
-			            console.log(firstSelection.sysInfo.system + "set to selected color");
-			        }
-			        
-			        if (firstSelection && secondSelection) {
-			            var d = calculateDistance(firstSelection.sysInfo, secondSelection.sysInfo);
-
-			            $('#labelDistance').text(d.toFixed(2));
-			        }
-
-			        IntersectedObject = null;
-			    }
+			    handlePossibleSelection();
 			}
 
 			function onDocumentMouseMove(event) {
@@ -340,60 +323,84 @@
 			    keyboard.update();
 
 			    ctrlPressed = keyboard.pressed("ctrl");
-			    //console.log(ctrlPressed);
 
+			    setColor(selectionInfo.currentIntersectingObject, unselectedMaterial);
+			    setColor(selectionInfo.firstSelection, firstSelectionMaterial);
+			    setColor(selectionInfo.secondSelection, secondSelectionMaterial);
+
+			    newIntersectingObject = firstIntersectingObject();
+
+			    if (newIntersectingObject) {
+			        // set the hover color for the object the person has moused over
+			        setColor(newIntersectingObject, hoverMaterial);
+			        selectionInfo.currentIntersectingObject = newIntersectingObject;
+
+			    } else {
+			        selectionInfo.currentIntersectingObject = null;
+			    }
+			}
+
+			function firstIntersectingObject() {
 			    // find intersections
-
-			    // create a Ray with origin at the mouse position
-			    //   and direction into the scene (camera direction)
+			    // create a Ray with origin at the mouse position and direction into the scene (camera direction)
 			    var vector = new THREE.Vector3(mouse.x, mouse.y, 1);
 			    projector.unprojectVector(vector, camera);
 			    var ray = new THREE.Raycaster(camera.position, vector.sub(camera.position).normalize());
 
-                // debug arrows
-			    //var dir = new THREE.Vector3(mouse.x, mouse.y, 1);
-			    //var origin = new THREE.Vector3(0, 0, 0);
-			    //var length = 100;
-			    //var hex = 0xffff00;
-			    //var arrowHelper = new THREE.ArrowHelper(dir, origin, length, hex);
-			    //scene.add(arrowHelper);
-
-
 			    // create an array containing all objects in the scene with which the ray intersects
 			    var intersects = ray.intersectObjects(scene.children);
 
-			    // IntersectedObject = the object in the scene currently closest to the camera 
-			    //		and intersected by the Ray projected from the mouse position 	
-
 			    // if there is one (or more) intersections
 			    if (intersects.length > 0) {
-			        // if the closest object intersected is not the currently stored intersection object and has sysInfo (ie we want to be able to select it)
-			        if (intersects[0].object != IntersectedObject && intersects[0].object.sysInfo) {
-			            // restore previous intersection object (if it exists) to its original color
-			            if (IntersectedObject) {
-                            resetColor(IntersectedObject)			                
-			                console.log(IntersectedObject.sysInfo.system + "set to unselected colorA");
-			            }
-			                
-			            // store reference to closest object as current intersection object
-			            IntersectedObject = intersects[0].object;
-			            // set a new color for closest object'
-			            setColor(IntersectedObject, hoverMaterial);			            
-			            console.log(IntersectedObject.sysInfo.system);
-			            console.log(IntersectedObject.sysInfo.system + "set to hover color");
+			        // if the closest object intersected has sysInfo (ie we want to be able to select it)
+			        if (intersects[0].object.sysInfo) {
+			            return intersects[0].object;
 			        }
 			    }
-			    else // there are no intersections
-			    {
-			        // restore previous intersection object (if it exists) to its original color only if it was not selected
-			        if (IntersectedObject) {
-			            resetColor(IntersectedObject);
-			        }
-
-			        // remove previous intersection object reference by setting current intersection object to "nothing"
-			        IntersectedObject = null;
-			    }
+			    return null;
 			}
+
+			function setSelectionObject(selectionInfo, selectionName, object, material) {
+			    selectionInfo[selectionName] = object;
+			    setColor(selectionInfo[selectionName], material);
+			}
+
+            function applySelectionToSystem(selectionInfo, selectionName, stationName, selectionMaterial) {
+                
+                unsetColor(selectionInfo[selectionName]);                    
+                selectSceneObject(selectionInfo, selectionName, stationName, selectionMaterial);
+                if (selectionInfo.firstSelection && selectionInfo.secondSelection) {
+                    var d = calculateDistance(selectionInfo.firstSelection.sysInfo, selectionInfo.secondSelection.sysInfo);
+                    $('#labelDistance').text(d);
+                }
+            }
+
+            function selectSceneObject(selectionInfo, selectionName, systemName, selectionMaterial) {                
+                $.each(scene.children, function (index, value) {
+                    if (value.meshType == 'sphere' && value.sysInfo.system == systemName) {
+                        setSelectionObject(selectionInfo, selectionName, value, selectionMaterial);
+                        return false;
+                    }
+                });
+            }
+
+            function handlePossibleSelection() {
+                if (selectionInfo.currentIntersectingObject) {
+                    var systemName = selectionInfo.currentIntersectingObject.sysInfo.system;
+
+                    if (ctrlPressed) {
+                        applySelectionToSystem(selectionInfo, 'secondSelection', systemName, secondSelectionMaterial)
+                        syncDropDown('#ddlSystemsTo', systemName);
+                    } else {
+                        applySelectionToSystem(selectionInfo, 'firstSelection', systemName, firstSelectionMaterial)
+                        syncDropDown('#ddlSystemsFrom', systemName);
+                    }
+                }
+            }
+
+            function syncDropDown(dropDownName, systemName) {
+                $(dropDownName).val(systemName);
+            }			
 
 			function render() {
 
@@ -481,23 +488,25 @@
 
 			function calculateDistance(first, second) {
 			    // d = sqrt((x2-x1)^2 + (y2-y1)^2 + (z2-z1)^2)
-			    var d = Math.sqrt(((first.x - second.x) * (first.x - second.x)) + ((first.y - second.y) * (first.y - second.y)) + ((first.z - second.z) * (first.z - second.z)));
-			    return d;
+			    if (first && second) {
+			        var d = Math.sqrt(((first.x - second.x) * (first.x - second.x)) + ((first.y - second.y) * (first.y - second.y)) + ((first.z - second.z) * (first.z - second.z)));
+			        return d.toFixed(2);
+			    }
+			    return 0;
 			}
 
 			function setColor(mesh, material) {
-			    mesh.prevMaterial = mesh.material;
-			    mesh.material = material;
+			    if (mesh && mesh.material) {			        
+			        mesh.material = material;
+			        mesh.sisterMesh.material = mesh.material;
+			    }
 			}
 
-			function resetColor(mesh) {
-
-			    if (mesh.prevMaterial) {
-			        mesh.material = mesh.prevMaterial;
-			    } else {
-			        mesh.matermail = unselectedMaterial;
+			function unsetColor(mesh) {
+			    if (mesh && mesh.material) {
+			        mesh.material = unselectedMaterial;
+			        mesh.sisterMesh.material = mesh.material;
 			    }
-			    
 			}
 
 			function makeTextSprite(message, parameters) {
