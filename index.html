@@ -33,12 +33,14 @@
                 <br /><label>Use left mouse or dropdown to build a route.</label>                
                 <br /><select id="ddlSystems"><option></option></select>                
                 <br /><button id="btnMoreSystems">Add more systems. Takes 30 seconds.</button>
-                <br /><button id="btnClearRoute">Clear Route</button>                
+                <br /><button id="btnClearRoute">Clear Route</button>
+                <br /><button id="btnDistanceDump">Distance Dump</button>                
                 <br /><label id="label1">Route:</label><label id="labelRoute"></label>
                 <br /><label id="label2">Distance:</label><label id="labelDistance"></label>
-                <!--<br /><input id="txtInput" />-->
+                <br /><textarea id="txtDistances" rows="4" cols="50" style="display:none;"></textarea>
+    <!--<br /><input id="txtInput" />-->
 
-            </div>
+</div>
         </div>
         <script src="js/jquery-2.1.1.min.js"></script>
 		<script src="js/three.min.js"></script>
@@ -79,8 +81,14 @@
                 });
 
                 $("#btnClearRoute").click(function () {
-
                     clearRoute();
+                });
+
+                $("#btnDistanceDump").click(function () {
+                    var distances = distanceDump();
+                    $("#txtDistances").show();
+                    $("#txtDistances").val(distances);
+                    $("#btnDistanceDump").hide();
                 });
 
                 $("#ddlSystems").change(function () {
@@ -393,6 +401,24 @@
                 });
 
                 $('#labelDistance').text(totalDistance.toFixed(2));
+            }
+
+            function distanceDump() {
+                var dump = '';
+                var xyzInfo = readXyzData();
+
+                for (var i = 0; i < xyzInfo.length; i++) {
+
+                    for (var j = 0; j < xyzInfo.length; j++) {
+
+                        var d = calculateDistance(xyzInfo[i], xyzInfo[j]);
+
+                        dump += xyzInfo[i].system + ',' + xyzInfo[j].system + ','+ d.toFixed(2) + '\n';
+
+                    }
+                }
+                return dump;
+
             }
 
             function selectSceneObject(selectionInfo, systemName, selectionMaterial) {                
