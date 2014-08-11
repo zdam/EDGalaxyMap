@@ -16,3 +16,89 @@ var sysData = [
 ['Wolf 1061','-0.829','5.451','12.77',''],
 ['Procyon','','6.22','2.674','-9.179',''],
 ];
+
+
+/*
+Wyrd
+above is in galactic coords
+
+web says:
+Galactic (X,Y,Z) coordinates in ly: -3.91, 11.6, 31.5 
+
+elite above says:
+'-11.6','31.5','-3.91'
+
+so order is diff (Y,Z,X), and Y is flipped pos to neg
+
+var raData = [
+['999','13','19','45','47','46','40','33.8','WyrdAdam'],
+
+generates:
+
+
+
+Distance from SOL
+ 33.8
+
+Right Ascension and Declination: 13h19m45.657s, +47°46'40.47" (epoch 2000.0) 
+RA
+13 19 45
+
+DEC
++47 46
+
+Galactic:
+Long
+199
+
+Lat
+47
+
+x = D.Cos(Lat).Sin(Long)
+y = D.Cos(Lat).Cos(Long)
+z = D.Sin(Lat)
+
+
+Cos(Lat) = .681
+Cos(Long) = -0.94
+Sin(Lat) = .731
+Sin(Long) = -0.32
+
+x = 33.8 * .681 * -0.32 == -7.36
+y = 33.8 * .681 * -0.94 == -21.63
+z = 33.8 * .731			== 24.7
+
+
+
+
+
+elite:
+sol is at 0,0,0
+
+
+concrete example of wyrd:
+http://www.stellar-database.com/Scripts/search_star.exe?ID=195800
+
+
+calculators I have tried:
+
+http://ned.ipac.caltech.edu/forms/calculator.html
+http://lambda.gsfc.nasa.gov/toolbox/tb_coordconv.cfm
+http://www.robertmartinayers.org/tools/coordinates.html
+
+the formula:
+http://terraformers.info/files/galactic.pdf
+
+
+
+
+
+export:
+
+Positions
+ProperNames
+
+
+
+
+*/

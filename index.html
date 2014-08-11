@@ -29,11 +29,13 @@
 
         <div id="container">
             <div id="controls">
-                <label>Left Mouse: Select, Hold to Rotate. Ctrl + Left Mouse: Select 2nd object for distance calculation. Right Mouse: Pan. Mouse Wheel: Zoom</label><br />
-                <label id="label1">Distance:</label><label id="labelDistance"></label>
-                <br /><select id="ddlSystemsFrom"><option></option></select>
-                <br /><select id="ddlSystemsTo" ><option></option></select>
+                <br /><label>Left Mouse: Hold to Rotate. Right Mouse: Pan. Mouse Wheel: Zoom</label>
+                <br /><label>Use left mouse or dropdown to build a route.</label>                
+                <br /><select id="ddlSystems"><option></option></select>                
                 <br /><button id="btnMoreSystems">Add more systems. Takes 30 seconds.</button>
+                <br /><button id="btnClearRoute">Clear Route</button>                
+                <br /><label id="label1">Route:</label><label id="labelRoute"></label>
+                <br /><label id="label2">Distance:</label><label id="labelDistance"></label>
                 <!--<br /><input id="txtInput" />-->
 
             </div>
@@ -71,21 +73,21 @@
                     setTimeout(function () {
                         var raInfo = readRaData();
                         addSysInfoToScene(scene, raInfo);
-                        addSysInfoToDropDown(raInfo, '#ddlSystemsFrom');
-                        addSysInfoToDropDown(raInfo, '#ddlSystemsTo');
+                        addSysInfoToDropDown(raInfo, '#ddlSystems');                        
                     }, 100)
                     $("#btnMoreSystems").hide();
                 });
 
-                $("#ddlSystemsFrom").change(function () {
-                    var systemName = $("#ddlSystemsFrom option:selected").text();
-                    applySelectionToSystem(selectionInfo, 'firstSelection', systemName, firstSelectionMaterial);
+                $("#btnClearRoute").click(function () {
+
+                    clearRoute();
                 });
 
-                $("#ddlSystemsTo").change(function () {
-                    var systemName = $("#ddlSystemsTo option:selected").text();
-                    applySelectionToSystem(selectionInfo, 'secondSelection', systemName, secondSelectionMaterial);
+                $("#ddlSystems").change(function () {
+                    var systemName = $("#ddlSystems option:selected").text();
+                    applySelectionToSystem(selectionInfo, systemName, routeSelectionMaterial);
                 });
+
             });
 
             // Todo list
@@ -101,23 +103,21 @@
 			var projector, mouse = { x: 0, y: 0 };
 
 			var selectionInfo = {
-			    firstSelection: {},
-                secondSelection: {},
-                currentIntersectingObject: {}
+                currentIntersectingObject: {},
+                routeSelections: []                
 			};
 
 			var scale = 10;
 			var unselectedColor = 0xffffff;
 			var hoverColor = 0xffff00;
-			var firstSelectionColor = 0x00ff00;
-			var secondSelectionColor = 0x0000ff;
+			var routeSelectionColor = 0xff69b4;
 			var unselectedMaterial = new THREE.MeshLambertMaterial({ color: unselectedColor, shading: THREE.FlatShading });
 			var hoverMaterial = new THREE.MeshLambertMaterial({ color: hoverColor, shading: THREE.FlatShading });
-			var firstSelectionMaterial = new THREE.MeshLambertMaterial({ color: firstSelectionColor, shading: THREE.FlatShading });
-			var secondSelectionMaterial = new THREE.MeshLambertMaterial({ color: secondSelectionColor, shading: THREE.FlatShading });
+			var routeSelectionMaterial = new THREE.MeshLambertMaterial({ color: routeSelectionColor, shading: THREE.FlatShading });
 
 			var keyboard = new KeyboardState();
 			var ctrlPressed = false;
+			var shiftPressed = false;
 
 			init();
 			animate();
@@ -135,8 +135,7 @@
 				initRenderer();
 				initHandlers();
 
-				addSysInfoToDropDown(xyzInfo, '#ddlSystemsFrom');
-				addSysInfoToDropDown(xyzInfo, '#ddlSystemsTo');
+				addSysInfoToDropDown(xyzInfo, '#ddlSystems');				
 
 			}
 
@@ -151,9 +150,9 @@
 			    camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 1, 100000);
 			    scene.add(camera);
 
-			    camera.position.z = 400;
-			    camera.position.y = 600;
-			    camera.position.x = -200;
+			    camera.position.z = 600;
+			    camera.position.y = 700;
+			    camera.position.x = -100;
 
 			    camera.lookAt(scene.position);    
 			}
@@ -326,10 +325,14 @@
 			    keyboard.update();
 
 			    ctrlPressed = keyboard.pressed("ctrl");
+			    shiftPressed = keyboard.pressed("shift");
+
 
 			    setColor(selectionInfo.currentIntersectingObject, unselectedMaterial);
-			    setColor(selectionInfo.firstSelection, firstSelectionMaterial);
-			    setColor(selectionInfo.secondSelection, secondSelectionMaterial);
+
+			    $.each(selectionInfo.routeSelections, function (index, value) {
+			        setColor(selectionInfo.routeSelections[index], routeSelectionMaterial);			        
+			    });
 
 			    newIntersectingObject = firstIntersectingObject();
 
@@ -363,41 +366,65 @@
 			    return null;
 			}
 
-			function setSelectionObject(selectionInfo, selectionName, object, material) {
-			    selectionInfo[selectionName] = object;
-			    setColor(selectionInfo[selectionName], material);
-			}
-
-            function applySelectionToSystem(selectionInfo, selectionName, stationName, selectionMaterial) {
-                
-                unsetColor(selectionInfo[selectionName]);                    
-                selectSceneObject(selectionInfo, selectionName, stationName, selectionMaterial);
-                if (selectionInfo.firstSelection && selectionInfo.secondSelection) {
-                    var d = calculateDistance(selectionInfo.firstSelection.sysInfo, selectionInfo.secondSelection.sysInfo);
-                    $('#labelDistance').text(d);
-                }
+            function applySelectionToSystem(selectionInfo, systemName, selectionMaterial) {
+                selectSceneObject(selectionInfo, systemName, selectionMaterial);
+                displayDistance();
+                displayRoute();
             }
 
-            function selectSceneObject(selectionInfo, selectionName, systemName, selectionMaterial) {                
+            function displayRoute() {
+                var totalRoute = '';
+                $.each(selectionInfo.routeSelections, function (index, value) {
+                    totalRoute += selectionInfo.routeSelections[index].sysInfo.system + ' -> ';
+                });
+
+                var trimmed = totalRoute.substring(0, totalRoute.length - 4);
+                $('#labelRoute').text(trimmed);
+            }
+
+            function displayDistance() {
+                
+                var totalDistance = 0;
+                $.each(selectionInfo.routeSelections, function (index, value) {
+                    if (selectionInfo.routeSelections.length > 1 && index < selectionInfo.routeSelections.length-1) {
+                        var d = calculateDistance(selectionInfo.routeSelections[index].sysInfo, selectionInfo.routeSelections[index + 1].sysInfo);
+                        totalDistance += +d;
+                    }
+                });
+
+                $('#labelDistance').text(totalDistance.toFixed(2));
+            }
+
+            function selectSceneObject(selectionInfo, systemName, selectionMaterial) {                
                 $.each(scene.children, function (index, value) {
                     if (value.meshType == 'sphere' && value.sysInfo.system == systemName) {
-                        setSelectionObject(selectionInfo, selectionName, value, selectionMaterial);
+                        setSelectionObject(selectionInfo, value, selectionMaterial);
                         return false;
                     }
                 });
+            }
+
+            function setSelectionObject(selectionInfo, object, material) {
+                selectionInfo.routeSelections.push(selectionInfo.currentIntersectingObject);
+                setColor(selectionInfo.routeSelections[selectionInfo.routeSelections.length-1], material);
+            }
+
+            function clearRoute() {
+                $.each(selectionInfo.routeSelections, function (index, value) {
+                    unsetColor(selectionInfo.routeSelections[index]);   
+                });
+                selectionInfo.routeSelections = [];
+                displayDistance();
+                displayRoute();
             }
 
             function handlePossibleSelection() {
                 if (selectionInfo.currentIntersectingObject) {
                     var systemName = selectionInfo.currentIntersectingObject.sysInfo.system;
 
-                    if (ctrlPressed) {
-                        applySelectionToSystem(selectionInfo, 'secondSelection', systemName, secondSelectionMaterial)
-                        syncDropDown('#ddlSystemsTo', systemName);
-                    } else {
-                        applySelectionToSystem(selectionInfo, 'firstSelection', systemName, firstSelectionMaterial)
-                        syncDropDown('#ddlSystemsFrom', systemName);
-                    }
+                    applySelectionToSystem(selectionInfo, systemName, routeSelectionMaterial)
+                    syncDropDown('#ddlSystems', systemName);
+
                 }
             }
 
@@ -493,7 +520,7 @@
 			    // d = sqrt((x2-x1)^2 + (y2-y1)^2 + (z2-z1)^2)
 			    if (first && second) {
 			        var d = Math.sqrt(((first.x - second.x) * (first.x - second.x)) + ((first.y - second.y) * (first.y - second.y)) + ((first.z - second.z) * (first.z - second.z)));
-			        return d.toFixed(2);
+			        return d;
 			    }
 			    return 0;
 			}
@@ -583,6 +610,7 @@
 			    ctx.fill();
 			    ctx.stroke();
 			}
+
 		</script>
 	</body>
 </html>
