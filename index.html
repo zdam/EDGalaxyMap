@@ -151,8 +151,11 @@
 			    camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 1, 100000);
 			    scene.add(camera);
 
-			    camera.position.z = 900;
-			    camera.lookAt(scene.position);			    
+			    camera.position.z = 400;
+			    camera.position.y = 600;
+			    camera.position.x = -200;
+
+			    camera.lookAt(scene.position);    
 			}
 
 			function addSysInfoToDropDown(sysInfo, ddl) {
@@ -241,8 +244,8 @@
 			}
 
 			function initControls(camera) {
-			    initTrackballControls(camera);
-			    //initOrbitControls(camera);
+			    //initTrackballControls(camera);
+			    initOrbitControls(camera);
 			}
 
 			function initTrackballControls(camera) {
