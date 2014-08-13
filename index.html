@@ -15,8 +15,8 @@
             }
             #controls
             {
-              /*background-color: green;*/
-              top: 10px;
+              /*background-color: black;*/
+              top: 0px;
               left: 10px;
               position: absolute;
               width: 100%;
@@ -30,11 +30,13 @@
         <div id="container">
             <div id="controls">
                 <br /><label>Left Mouse: Hold to Rotate. Right Mouse: Pan. Mouse Wheel: Zoom</label>
-                <br /><label>Use left mouse or dropdown to build a route.</label>                
-                <br /><select id="ddlSystems"><option></option></select>                
+                <br /><label>Use left mouse or dropdown to build a route.</label>
+                <br /><label>Find Shortest Route will find route between first and second selected systems.</label>                
+                <br />Select System:<select id="ddlSystems"><option></option></select>                
                 <br /><button id="btnMoreSystems">Add more systems. Takes 30 seconds.</button>
                 <br /><button id="btnClearRoute">Clear Route</button>
-                <br /><button id="btnDistanceDump">Distance Dump</button>                
+                <br /><button id="btnDistanceDump">Distance Dump</button>
+                <br /><button id="btnShortestRoute">Find Shortest Route using this jump distance:</button><input id="maxJumpDistance" type="text" style="width:40px;" value="7" />                
                 <br /><label id="label1">Route:</label><label id="labelRoute"></label>
                 <br /><label id="label2">Distance:</label><label id="labelDistance"></label>
                 <br /><textarea id="txtDistances" rows="4" cols="50" style="display:none;"></textarea>
@@ -51,8 +53,11 @@
 		<script src="js/KeyboardState.js"></script>
         <script src="js/libs/stats.min.js"></script>
 		<script src="js/underscore-min.js"></script>		
-		<script src="pos-and-name.js"></script>		
+        <script src="pos-and-name.js"></script>
+		<script src="beta1-data.js"></script>		
         
+        <script src="js/dijkstra-master/graph.js"></script>		
+
         <!-- load the font files -->
 
         <script src="fonts/gentilis_bold.typeface.js"></script>
@@ -84,8 +89,12 @@
                     clearRoute();
                 });
 
+                $("#btnShortestRoute").click(function () {
+                    shortestRoute($('#maxJumpDistance').val());
+                });
+
                 $("#btnDistanceDump").click(function () {
-                    var distances = distanceDump();
+                    var distances = distanceTextDump();
                     $("#txtDistances").show();
                     $("#txtDistances").val(distances);
                     $("#btnDistanceDump").hide();
@@ -214,7 +223,7 @@
 			        labelMesh.position.y = (sysInfo[i].y - 2) * scale;
 			        labelMesh.position.z = (sysInfo[i].z) * scale;
 			        labelMesh.updateMatrix();
-			        labelMesh.matrixAutoUpdate = false;
+			        //labelMesh.matrixAutoUpdate = false;
 			        labelMesh.sysInfo = sysInfo[i];
 			        labelMesh.meshType = 'text';
 
@@ -239,15 +248,17 @@
 			    light.position.set(1, 1, 1);
 			    scene.add(light);
 
-			    light = new THREE.DirectionalLight(0x002288);
+			    light = new THREE.DirectionalLight(0xffffff);
 			    light.position.set(-1, -1, -1);
 			    scene.add(light);
 
+			    //light = new THREE.AmbientLight(0xffffff);
 			    light = new THREE.AmbientLight(0x222222);
 			    scene.add(light);
 
 			    // initialize object to perform world/screen calculations
 			    projector = new THREE.Projector();
+
 			}
 
 			function initControls(camera) {
@@ -339,7 +350,14 @@
 			    setColor(selectionInfo.currentIntersectingObject, unselectedMaterial);
 
 			    $.each(selectionInfo.routeSelections, function (index, value) {
-			        setColor(selectionInfo.routeSelections[index], routeSelectionMaterial);			        
+			        setColor(selectionInfo.routeSelections[index], routeSelectionMaterial);
+			    });
+
+			    $.each(scene.children, function (index, value) {
+			        if (value.meshType == 'text') {
+                        // This will force the text to always face the viewer, but I am not sure I like it
+			            //value.lookAt(camera.position);
+			        }
 			    });
 
 			    newIntersectingObject = firstIntersectingObject();
@@ -403,22 +421,114 @@
                 $('#labelDistance').text(totalDistance.toFixed(2));
             }
 
-            function distanceDump() {
-                var dump = '';
+            function shortestRoute(maxJumpDistance) {
+
+                if (selectionInfo.routeSelections[0] && selectionInfo.routeSelections[1]) {
+
+                    var distanceDump = distanceDumper();
+                    if (!maxJumpDistance) {
+                        maxJumpDistance = 5; // Max distance your ship can jump
+                    }
+                    
+                    var map = buildMap(distanceDump, +maxJumpDistance);
+
+                    var graph = new Graph(map);
+                
+                    var shortestPath = graph.findShortestPath(selectionInfo.routeSelections[0].sysInfo.system, selectionInfo.routeSelections[1].sysInfo.system);
+
+                    if (shortestPath) {
+                        $('#labelRoute').text(shortestPath);
+                        var distances = getDistancesForShortestRoute(distanceDump, shortestPath);
+                        $('#labelDistance').text(distances);
+
+                        drawLinesForShortestPath(shortestPath);
+                    } else {
+                        $('#labelRoute').text('Cannot make this trip');
+                        $('#labelDistance').text("");
+                    }
+
+                }
+            }
+
+            function drawLinesForShortestPath(shortestPath) {
+                // experimental line drawing
+                var material = new THREE.LineBasicMaterial({
+                    color: 0xff69b4
+                });
+
+                for (var i = 0; i < shortestPath.length - 1; i++) {
+                    var geometry = new THREE.Geometry();                    
+
+                    for (var j = 0; j < scene.children.length; j++) {
+                        if (scene.children[j].meshType && scene.children[j].meshType == 'sphere' && scene.children[j].sysInfo.system == shortestPath[i]) {
+                            geometry.vertices.push(scene.children[j].position);
+                        }
+                    }
+
+                    for (var k = 0; k < scene.children.length; k++) {
+                        if (scene.children[k].meshType && scene.children[k].meshType == 'sphere' && scene.children[k].sysInfo.system == shortestPath[i + 1]) {
+                            geometry.vertices.push(scene.children[k].position);
+                        }
+                    }
+
+                    var line = new THREE.Line(geometry, material);
+                    line.meshType = 'line';
+                    scene.add(line);
+                }
+            }
+
+            function getDistancesForShortestRoute(distanceDump, shortestPath) {
+                var distances = [];
+                for (var i = 0; i < shortestPath.length-1; i++) {
+                    for (var j = 0; j < distanceDump.length; j++) {
+                        if (distanceDump[j].systemFrom == shortestPath[i] && distanceDump[j].systemTo == shortestPath[i+1]) {
+                            distances.push(distanceDump[j].distance);
+                            break;
+                        }
+                    }
+                }
+                return distances.join();
+            }
+
+            function buildMap(distanceDump, maxJumpDistance) {
+                var map = {};
+                for (var i = 0; i < distanceDump.length; i++) {
+                    var dd = distanceDump[i];
+                    var from = dd.systemFrom;
+                    var to = dd.systemTo;
+                    var d = +dd.distance;
+
+                    if (d <= maxJumpDistance) {
+                        var obj = {};
+                        obj[to] = d
+                        var res = $.extend(true, map[from], obj);
+                        map[from] = res;
+                    }
+                }
+                return map;
+            }
+
+            function distanceDumper() {
+                var dump = [];
                 var xyzInfo = readXyzData();
 
                 for (var i = 0; i < xyzInfo.length; i++) {
-
                     for (var j = 0; j < xyzInfo.length; j++) {
-
                         var d = calculateDistance(xyzInfo[i], xyzInfo[j]);
-
-                        dump += xyzInfo[i].system + ',' + xyzInfo[j].system + ','+ d.toFixed(2) + '\n';
-
+                        dump.push({ "systemFrom": xyzInfo[i].system, "systemTo": xyzInfo[j].system, "distance": d.toFixed(2) });
                     }
                 }
                 return dump;
+            }
 
+            function distanceTextDump() {
+                var distanceDump = distanceDumper();
+                var dump = '';
+
+                for (var i = 0; i < distanceDump.length; i++) {
+                    dump += distanceDump[i].systemFrom + ',' + distanceDump[i].systemTo + ',' + distanceDump[i].distance + '\n';
+                }
+                return dump;
             }
 
             function selectSceneObject(selectionInfo, systemName, selectionMaterial) {                
@@ -431,13 +541,19 @@
             }
 
             function setSelectionObject(selectionInfo, object, material) {
-                selectionInfo.routeSelections.push(selectionInfo.currentIntersectingObject);
+                selectionInfo.routeSelections.push(object);
                 setColor(selectionInfo.routeSelections[selectionInfo.routeSelections.length-1], material);
             }
 
             function clearRoute() {
                 $.each(selectionInfo.routeSelections, function (index, value) {
                     unsetColor(selectionInfo.routeSelections[index]);   
+                });
+                $.each(scene.children, function (index, value) {
+                    if (value.meshType == 'line') {
+                        //scene.remove(value);                        
+                        value.visible = false;
+                    }
                 });
                 selectionInfo.routeSelections = [];
                 displayDistance();
@@ -448,9 +564,12 @@
                 if (selectionInfo.currentIntersectingObject) {
                     var systemName = selectionInfo.currentIntersectingObject.sysInfo.system;
 
-                    applySelectionToSystem(selectionInfo, systemName, routeSelectionMaterial)
-                    syncDropDown('#ddlSystems', systemName);
+                    if (shiftPressed) {
 
+                    } else {
+                        applySelectionToSystem(selectionInfo, systemName, routeSelectionMaterial)
+                        syncDropDown('#ddlSystems', systemName);
+                    }
                 }
             }
 
@@ -469,8 +588,8 @@
 			    var sysInfo = [];
 
                 // handle data already in galactic xyz co-ords
-			    for (var i = 0; i < xyzData.length; i++) {
-			        var parts = xyzData[i];
+			    for (var i = 0; i < beta1Data.length; i++) {
+			        var parts = beta1Data[i];
 
 			        if (!isNaN(parts[2]) && !isNaN(parts[3]) && !isNaN(parts[4])
                         && +parts[2] != 0 && +parts[3] != 0 && +parts[4] != 0) {
