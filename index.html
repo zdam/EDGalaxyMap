@@ -33,7 +33,7 @@
                 <br /><label>Use left mouse or dropdown to build a route.</label>
                 <br /><label>Find Shortest Route will find route between first and second selected systems.</label>                
                 <br />Select System:<select id="ddlSystems"><option></option></select>                
-                <br /><button id="btnMoreSystems">Add more systems. Takes 30 seconds.</button>
+                <!--<br /><button id="btnMoreSystems">Add more systems. Takes 30 seconds.</button>-->
                 <br /><button id="btnClearRoute">Clear Route</button>
                 <br /><button id="btnDistanceDump">Distance Dump</button>
                 <br /><button id="btnShortestRoute">Find Shortest Route using this jump distance:</button><input id="maxJumpDistance" type="text" style="width:40px;" value="7" />                
@@ -55,6 +55,7 @@
 		<script src="js/underscore-min.js"></script>		
         <script src="pos-and-name.js"></script>
 		<script src="beta1-data.js"></script>		
+		<script src="beta2-data.js"></script>		
         
         <script src="js/dijkstra-master/graph.js"></script>		
 
@@ -588,8 +589,8 @@
 			    var sysInfo = [];
 
                 // handle data already in galactic xyz co-ords
-			    for (var i = 0; i < beta1Data.length; i++) {
-			        var parts = beta1Data[i];
+			    for (var i = 0; i < beta2Data.length; i++) {
+			        var parts = beta2Data[i];
 
 			        if (!isNaN(parts[2]) && !isNaN(parts[3]) && !isNaN(parts[4])
                         && +parts[2] != 0 && +parts[3] != 0 && +parts[4] != 0) {
