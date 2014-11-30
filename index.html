@@ -52,10 +52,8 @@
         <script src="js/Detector.js"></script>
 		<script src="js/KeyboardState.js"></script>
         <script src="js/libs/stats.min.js"></script>
-		<script src="js/underscore-min.js"></script>		
-        <script src="pos-and-name.js"></script>
-		<script src="beta1-data.js"></script>		
-		<script src="beta2-data.js"></script>		
+		<script src="js/underscore-min.js"></script>			
+		<script src="gamma-data.js"></script>
         
         <script src="js/dijkstra-master/graph.js"></script>		
 
@@ -79,9 +77,39 @@
                 $("#btnMoreSystems").click(function () {
 
                     setTimeout(function () {
-                        var raInfo = readRaData();
-                        addSysInfoToScene(scene, raInfo);
-                        addSysInfoToDropDown(raInfo, '#ddlSystems');                        
+                        
+                        var query = {
+					        ver:2, 
+					        test:true,
+					        outputmode:2, 
+					        filter:{
+					            knownstatus:0,
+					            //systemname: "sol",
+					            cr:5,
+					            date:"2014-09-18 12:34:56",
+					            coordcube: [[-10,10],[-10,10],[-10,10]],
+					            coordsphere: {radius: 123.45, origin: [10,20,30]}
+					        }
+					    };
+
+
+  $.ajax({
+    type: 'POST',
+    contentType: 'application/json; charset=utf-8',
+    url: 'http://edstarcoordinator.com/api.asmx/GetSystems',
+    data: JSON.stringify(query),
+    dataType: 'json',
+    success:
+      function (data) {
+        var f = '';
+      },
+    error:
+    	function (d,a){
+    		var ss = '';
+    	}	 
+  });
+
+
                     }, 100)
                     $("#btnMoreSystems").hide();
                 });
@@ -112,9 +140,16 @@
             // Done. Enable selection of a system
             // Done. Enable selection of 2 systems, then display distance between them
             // Done. Add dropdowns to allow selection of systems
-            // Draw a line between selected systems
-            // Add larger invisble sphere mesh for each location so mouse selection is easier
 
+            // Switch to use EDStarCoordinator API to return list of systems within a sphere of current system
+            // Only display those items within sphere
+            // DONE POINTCLOUD:Or try generate a point cloud for a larger (all?) amount of items, and then switch to generating spheres + names within some radius
+            // DONE: WILL def need to use a point cloud
+            // Need to be able to make camera focus on a selected item
+            // The selected item being your current system, which it obtains from the NetLog (just use another program to get that info??)
+
+            var resolvedSystems = [];
+            var xyzData = [];
             var lines = [];
 			var container, stats;
 			var camera, controls, scene, renderer;			
@@ -132,6 +167,7 @@
 			var unselectedMaterial = new THREE.MeshLambertMaterial({ color: unselectedColor, shading: THREE.FlatShading });
 			var hoverMaterial = new THREE.MeshLambertMaterial({ color: hoverColor, shading: THREE.FlatShading });
 			var routeSelectionMaterial = new THREE.MeshLambertMaterial({ color: routeSelectionColor, shading: THREE.FlatShading });
+			var sphereGeometry = new THREE.SphereGeometry(3,4,4);
 
 			var keyboard = new KeyboardState();
 			var ctrlPressed = false;
@@ -142,18 +178,19 @@
 
 			function init() {
 
-				var xyzInfo = readXyzData();
+				xyzData = readXyzData();
 
 				scene = new THREE.Scene();
                 				
 				initCamera(scene);
 				initScene(scene);
-				addSysInfoToScene(scene, xyzInfo);
+				//addSysInfoToScene(scene, xyzData);
+				addSysInfoPointCloudToScene(scene, xyzData);
 				initControls(camera);
 				initRenderer();
 				initHandlers();
 
-				addSysInfoToDropDown(xyzInfo, '#ddlSystems');				
+				addSysInfoToDropDown(xyzData, '#ddlSystems');				
 
 			}
 
@@ -183,56 +220,111 @@
 			    });
 			}
 
+			function generatePointCloudGeometry( color, sysInfo ){
+
+				var geometry = new THREE.BufferGeometry();
+				var numPoints = sysInfo.length;
+
+				var positions = new Float32Array( numPoints*3 );
+				var colors = new Float32Array( numPoints*3 );
+
+				for( var i = 0; i < sysInfo.length; i++ ) {
+
+					var u = 1;
+					var v = 1;
+					var x = (sysInfo[i].x) * scale;
+					var y = (sysInfo[i].y) * scale;
+					var z = (sysInfo[i].z) * scale;
+
+					positions[ i ] = x;
+					positions[ i + 1 ] = y;
+					positions[ i + 2 ] = z;
+					
+					colors[ i ] = color.r;
+					colors[ i + 1 ] = color.r;
+					colors[ i + 2 ] = color.r;					
+
+				}
+
+				
+
+				geometry.addAttribute( 'position', new THREE.BufferAttribute( positions, 3 ) );
+				geometry.addAttribute( 'color', new THREE.BufferAttribute( colors, 3 ) );
+				geometry.computeBoundingBox();
+
+				return geometry;
+
+			}
+
+			function addSysInfoPointCloudToScene(scene, sysInfo) {
+				var geometry = generatePointCloudGeometry(new THREE.Color( 1,0,0 ), sysInfo);
+				var material = new THREE.PointCloudMaterial( { size: 0.05, vertexColors: THREE.VertexColors } );
+				var pointcloud = new THREE.PointCloud( geometry, material );
+
+				pointcloud.scale.set(1,1,1);
+				pointcloud.position.set(0,0,0);
+				scene.add(pointcloud); 		
+
+			}
+
 			function addSysInfoToScene(scene, sysInfo) {			    
 
-			    var geometry = new THREE.SphereGeometry(3, 6, 6);
+			    var maxItems = sysInfo.length;
+			    //var maxItems = 100; // limiting the number of fully rendered items
+
+			    for (var i = 0; i < maxItems; i++) {
+
+			    	addSingleSystemToScene(scene, sysInfo[i]);			        
+			    }
+			}
+
+			function addSingleSystemToScene(scene, singleSystem) {
+
 			    var material = unselectedMaterial;
 
-			    for (var i = 0; i < sysInfo.length; i++) {
+		        var mesh = new THREE.Mesh(sphereGeometry, material);
+		        mesh.position.x = (singleSystem.x) * scale;
+		        mesh.position.y = (singleSystem.y) * scale;
+		        mesh.position.z = (singleSystem.z) * scale;
+		        mesh.updateMatrix();
+		        mesh.matrixAutoUpdate = false;
+		        mesh.sysInfo = singleSystem;
+		        mesh.meshType = 'sphere';
 
-			        var mesh = new THREE.Mesh(geometry, material);
-			        mesh.position.x = (sysInfo[i].x) * scale;
-			        mesh.position.y = (sysInfo[i].y) * scale;
-			        mesh.position.z = (sysInfo[i].z) * scale;
-			        mesh.updateMatrix();
-			        mesh.matrixAutoUpdate = false;
-			        mesh.sysInfo = sysInfo[i];
-			        mesh.meshType = 'sphere';
+		        scene.add(mesh);
 
-			        scene.add(mesh);
+                // Billboard sprites for names. 
+		        //var spritey = makeTextSprite(sysInfo[i].system,
+                //    {
+                //        fontsize: 32,
+                //        fontface: "Georgia",
+                //        borderColor: { r: 0, g: 0, b: 255, a: 1.0 }
+                //    });
+		        //spritey.position.set(sysInfo[i].x * scale, sysInfo[i].y * scale, sysInfo[i].z * scale);
+		        //spritey.sysInfo = sysInfo[i];
+		        //scene.add(spritey);
 
-                    // Billboard sprites for names. 
-			        //var spritey = makeTextSprite(sysInfo[i].system,
-                    //    {
-                    //        fontsize: 32,
-                    //        fontface: "Georgia",
-                    //        borderColor: { r: 0, g: 0, b: 255, a: 1.0 }
-                    //    });
-			        //spritey.position.set(sysInfo[i].x * scale, sysInfo[i].y * scale, sysInfo[i].z * scale);
-			        //spritey.sysInfo = sysInfo[i];
-			        //scene.add(spritey);
 
-                    // real 3d objects for names
-			        var textOptions = {
-			            size: 10,
-			            height: 1,
-                        curveSegments: 2
-			        };
-			        var label = new THREE.TextGeometry(sysInfo[i].system, textOptions);
-			        var labelMesh = new THREE.Mesh(label, material);
-			        labelMesh.position.x = (sysInfo[i].x) * scale;
-			        labelMesh.position.y = (sysInfo[i].y - 2) * scale;
-			        labelMesh.position.z = (sysInfo[i].z) * scale;
-			        labelMesh.updateMatrix();
-			        //labelMesh.matrixAutoUpdate = false;
-			        labelMesh.sysInfo = sysInfo[i];
-			        labelMesh.meshType = 'text';
+                // real 3d objects for names
+		        var textOptions = {
+		            size: 10,
+		            height: 1,
+                    curveSegments: 2
+		        };
+		        var label = new THREE.TextGeometry(singleSystem.system, textOptions);
+		        var labelMesh = new THREE.Mesh(label, material);
+		        labelMesh.position.x = (singleSystem.x) * scale;
+		        labelMesh.position.y = (singleSystem.y - 2) * scale;
+		        labelMesh.position.z = (singleSystem.z) * scale;
+		        labelMesh.updateMatrix();
+		        //labelMesh.matrixAutoUpdate = false;
+		        labelMesh.sysInfo = singleSystem;
+		        labelMesh.meshType = 'text';
 
-			        mesh.sisterMesh = labelMesh;
-			        labelMesh.sisterMesh = mesh;
+		        mesh.sisterMesh = labelMesh;
+		        labelMesh.sisterMesh = mesh;
 
-			        scene.add(labelMesh);
-			    }
+		        scene.add(labelMesh);
 			}
 
 			function initScene(scene) {
@@ -337,7 +429,7 @@
 
 				renderer.setSize( window.innerWidth, window.innerHeight );
 
-				controls.handleResize();
+				//controls.handleResize();
 			}
 
 			function update() {
@@ -394,9 +486,27 @@
 			}
 
             function applySelectionToSystem(selectionInfo, systemName, selectionMaterial) {
+            	ensureProximalObjectsCreated(selectionInfo, systemName);
                 selectSceneObject(selectionInfo, systemName, selectionMaterial);
                 displayDistance();
                 displayRoute();
+            }
+
+            function ensureProximalObjectsCreated(selectionInfo, systemName) {
+				
+            	var current = _.find(xyzData, function(o){ return o.system == systemName});	
+            	
+            	var sphere = new THREE.Sphere(new THREE.Vector3(current.x, current.y, current.z), 30);
+
+            	$.each(xyzData, function(index, value) {
+            		if (sphere.containsPoint(new THREE.Vector3(value.x,value.y,value.z))) {
+            			var foundInScene = findSystemInScene(value.system);
+            			if (foundInScene == null) {
+            				resolvedSystems.push(value);
+							addSingleSystemToScene(scene, value);
+            			}
+            		}
+            	});
             }
 
             function displayRoute() {
@@ -426,9 +536,9 @@
 
                 if (selectionInfo.routeSelections[0] && selectionInfo.routeSelections[1]) {
 
-                    var distanceDump = distanceDumper();
+                    var distanceDump = distanceDumper(resolvedSystems);
                     if (!maxJumpDistance) {
-                        maxJumpDistance = 5; // Max distance your ship can jump
+                        maxJumpDistance = 7; // Max distance your ship can jump
                     }
                     
                     var map = buildMap(distanceDump, +maxJumpDistance);
@@ -509,21 +619,20 @@
                 return map;
             }
 
-            function distanceDumper() {
-                var dump = [];
-                var xyzInfo = readXyzData();
+            function distanceDumper(systemsToProcess) {
+                var dump = [];                
 
-                for (var i = 0; i < xyzInfo.length; i++) {
-                    for (var j = 0; j < xyzInfo.length; j++) {
-                        var d = calculateDistance(xyzInfo[i], xyzInfo[j]);
-                        dump.push({ "systemFrom": xyzInfo[i].system, "systemTo": xyzInfo[j].system, "distance": d.toFixed(2) });
+                for (var i = 0; i < systemsToProcess.length; i++) {
+                    for (var j = 0; j < systemsToProcess.length; j++) {
+                        var d = calculateDistance(systemsToProcess[i], systemsToProcess[j]);
+                        dump.push({ "systemFrom": systemsToProcess[i].system, "systemTo": systemsToProcess[j].system, "distance": d.toFixed(2) });
                     }
                 }
                 return dump;
             }
 
             function distanceTextDump() {
-                var distanceDump = distanceDumper();
+                var distanceDump = distanceDumper(resolvedSystems);
                 var dump = '';
 
                 for (var i = 0; i < distanceDump.length; i++) {
@@ -532,13 +641,23 @@
                 return dump;
             }
 
-            function selectSceneObject(selectionInfo, systemName, selectionMaterial) {                
-                $.each(scene.children, function (index, value) {
+            function findSystemInScene(systemName) {
+            	var toReturn = null;
+				$.each(scene.children, function (index, value) {
                     if (value.meshType == 'sphere' && value.sysInfo.system == systemName) {
-                        setSelectionObject(selectionInfo, value, selectionMaterial);
+                        toReturn = value;
                         return false;
                     }
                 });
+                return toReturn;            	
+            }
+
+
+            function selectSceneObject(selectionInfo, systemName, selectionMaterial) {
+            	var found = findSystemInScene(systemName);
+            	if (found != null) {
+            		setSelectionObject(selectionInfo, found, selectionMaterial);
+            	}                
             }
 
             function setSelectionObject(selectionInfo, object, material) {
@@ -589,76 +708,16 @@
 			    var sysInfo = [];
 
                 // handle data already in galactic xyz co-ords
-			    for (var i = 0; i < beta2Data.length; i++) {
-			        var parts = beta2Data[i];
+			    for (var i = 0; i < gammaData.length; i++) {
+			        var parts = gammaData[i];
 
-			        if (!isNaN(parts[2]) && !isNaN(parts[3]) && !isNaN(parts[4])
-                        && +parts[2] != 0 && +parts[3] != 0 && +parts[4] != 0) {
-			            var newSysInfo = { "system": parts[0], "station": parts[1], "x": +parts[2], "y": +parts[3], "z": +parts[4] };
+			        if (!isNaN(parts[1]) && !isNaN(parts[2]) && !isNaN(parts[3])) {                        
+			            var newSysInfo = { "system": parts[0], "station": "", "x": +parts[1], "y": +parts[2], "z": +parts[3] };
 			            sysInfo.push(newSysInfo);
 			        }
 			    }
 
 			    return sysInfo;
-			}
-
-			function readRaData() {
-			    var sysInfo = [];
-
-			    // handle data in ra format
-			    for (var i = 0; i < raData.length; i++) {
-			        var parts = raData[i];
-
-			        var o = {
-			            "RA_hr": +parts[1],
-			            "RA_min": +parts[2],
-			            "RA_sec": +parts[3],
-			            "Dec_deg": +parts[4],
-			            "Dec_arcmin": +parts[5],
-			            "Dec_arcsec": +parts[6],
-			            "Distance": +parts[7],
-			            "Name": parts[8]
-			        };
-
-			        var xyz = raToXyz(o);
-
-			        // note we do some flipping to match Elite Dangerous co-ord system
-
-			        var newSysInfo = { "system": xyz.name, "station": "", "x": xyz.y * -1, "y": xyz.z, "z": xyz.x };
-			        sysInfo.push(newSysInfo);
-			    }
-			    return sysInfo;
-			}
-
-			function raToXyz(pos) {			    
-			    var	theta, phi;
-			    var	dec_sign;
-			    var	cx, cy, cz;
-
-			    if (pos.Distance == 0.0)
-			    {
-			        x = y = z = 0.0;	// special case for our sun
-			        return {"x": x, "y": y, "z": z, "name": pos.Name };
-			    }
-
-			    theta = (pos.RA_hr + pos.RA_min/60.0 + pos.RA_sec/3600.0) * Math.PI / 12.0;
-
-			    if (pos.Dec_deg < 0)
-			        dec_sign = -1;
-			    else
-			        dec_sign = 1;
-			    phi = (90.0 - (pos.Dec_deg + pos.Dec_arcmin*dec_sign/60.0 +
-                        pos.Dec_arcsec*dec_sign/3600.0)) * Math.PI / 180.0;
-
-			    cx = pos.Distance * Math.cos(theta) * Math.sin(phi);
-			    cy = pos.Distance * Math.sin(theta) * Math.sin(phi);
-			    cz = pos.Distance * Math.cos(phi);
-
-    	        x = -0.0672*cx - 0.8727*cy - 0.4835*cz;
-		        y =  0.4927*cx - 0.4504*cy + 0.7445*cz;
-		        z = -0.8676*cx - 0.1884*cy + 0.4602*cz;
-                
-		        return { "x": x, "y": y, "z": z, "name": pos.Name };			    
 			}
 
 
