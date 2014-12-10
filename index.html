@@ -9,11 +9,9 @@
 	            font-weight: bold;	            
 	            margin: 0px;
 	            overflow: hidden;
+                background-color: black;
             }
             canvas { width: 100%; height: 100% }
-            #container
-            {
-            }
             #controls
             {
               /*background-color: black;*/
@@ -24,29 +22,77 @@
               color: white;
               z-index:5;
             }
+            #left
+            {
+              width: 300px;
+              float: left;
+              
+            }
+            #right
+            {
+              margin-left: 300px; /* Change this to whatever the width of your left column is ALSO change var windowOffset below */
+            }
+            .clear
+            {
+              clear: both;
+            }
+            .hidden 
+            {
+                display: none;
+            }
         </style>
 	</head>
 	<body>
 
         <div id="container">
-            <div id="controls">
-                <br /><label>Left Mouse: Hold to Rotate. Right Mouse: Pan. Mouse Wheel: Zoom</label>
-                <br /><label>Use left mouse or dropdown to build a route.</label>
-                <br /><label>Find Shortest Route will find route between first and second selected systems.</label>                
-                <!--<br />Select System:<select id="ddlSystems"><option></option></select>-->
-                <br />Select System:<input type="hidden" id="ddlSystemsHidden"/>                                
-                <!--<br /><button id="btnMoreSystems">Add more systems. Takes 30 seconds.</button>-->
-                <br /><button id="btnClearRoute">Clear Route</button>
-                <br /><button id="btnDistanceDump">Distance Dump</button>
-                <br /><button id="btnShortestRoute">Find Shortest Route using this jump distance:</button><input id="maxJumpDistance" type="text" style="width:40px;" value="7" />                
-                <br /><label id="label1">Info:</label><label id="labelInfo"></label>
-                <br /><label id="label2">Route:</label><label id="labelRoute"></label>
-                <br /><label id="label3">Distance:</label><label id="labelDistance"></label>
-                <br /><textarea id="txtDistances" rows="4" cols="50" style="display:none;"></textarea>
-    <!--<br /><input id="txtInput" />-->
+            <div id="left">
 
-</div>
+
+
+                <div id="controls">
+                    <br /><label>Left Mouse: Hold to Rotate. Right Mouse: Pan. Mouse Wheel: Zoom</label>
+                    <br /><label>Use left mouse or dropdown to build a route.</label>
+                    <br />
+
+                    <button id="tabButtonPlan" class="tabButton">Plan</button>
+                    <button id="tabButtonHistory" class="tabButton">History</button>
+                    <button id="tabButtonHeatmap" class="tabButton">Heatmap</button>
+                    <button id="tabButtonUtils" class="tabButton">Utils</button>
+
+                    <div id="tabPanelPlan" class="tabPanel hidden">
+                        <br /><label>Find Shortest Route will find route between first and second selected systems.</label>
+                        <!--<br />Select System:<select id="ddlSystems"><option></option></select>-->
+                        <br /><input type="hidden" id="ddlSystemsHidden" />
+                        <!--<br /><button id="btnMoreSystems">Add more systems. Takes 30 seconds.</button>-->
+                        <br /><button id="btnClearRoute">Clear Route</button>
+
+                        <br /><button id="btnShortestRoute">Find Shortest Route using this jump distance:</button><input id="maxJumpDistance" type="text" style="width:40px;" value="7" />
+                        <br /><label id="label1">Info:</label><label id="labelInfo"></label>
+                        <br /><label id="label2">Route:</label><label id="labelRoute"></label>
+                        <br /><label id="label3">Distance:</label><label id="labelDistance"></label>
+                        <br /><input type="checkbox" id="chkShowOnlyRouteSystems" />Show only Route Systems
+                    </div>
+                    <div id="tabPanelHistory" class="tabPanel hidden">
+                        Coming soon!
+                    </div>
+                    <div id="tabPanelHeatmap" class="tabPanel hidden">
+                        Coming soon!
+
+                    </div>
+                    <div id="tabPanelUtils" class="tabPanel hidden">
+                        <br /><button id="btnDistanceDump">Distance Dump</button>
+                        <br /><textarea id="txtDistances" rows="4" cols="50" style="display:none;"></textarea>
+                    </div>
+                </div>
+            </div>
+            <div id="right">
+                <div id="renderContainer">
+
+                </div>                
+            </div>
+            <div class="clear"></div>
         </div>
+
         <script src="js/jquery-2.1.1.min.js"></script>
 		<script src="js/three.min.js"></script>
         <script src="js/controls/TrackballControls.js"></script>
@@ -138,6 +184,14 @@
                     applySelectionToSystem(selectionInfo, systemName, routeSelectionMaterial);
                 });
 
+                $('.tabButton').click(function () {
+                    handleTabClick($(this).attr('id'));
+                });
+
+                $('#chkShowOnlyRouteSystems').click(function () {
+                    showOnlyRouteSystems($(this).is(':checked'));
+                });
+
             });
 
             // Todo list
@@ -152,6 +206,8 @@
             // Need to be able to make camera focus on a selected item
             // The selected item being your current system, which it obtains from the NetLog (just use another program to get that info??)
 
+            var windowOffset = 300; // this must match the css width values above in #left and #right
+
             var resolvedSystems = [];
             var xyzData = [];
             var lines = [];
@@ -161,7 +217,8 @@
 
 			var selectionInfo = {
                 currentIntersectingObject: {},
-                routeSelections: []                
+                routeSelections: [],
+                currentRoute: []
 			};
 
 			var scale = 10;
@@ -177,8 +234,20 @@
 			var ctrlPressed = false;
 			var shiftPressed = false;
 
+
+			handleTabClick('tabButtonPlan');
+
 			init();
 			animate();
+
+			function handleTabClick(tabId) {
+			    var tabButtons = $('.tabButton');
+			    var tabPanels = $('.tabPanel');
+
+			    var panelId = tabId.replace('tabButton', 'tabPanel');
+			    tabPanels.hide();
+			    $('#' + panelId).show();
+			}
 
 			function init() {
 
@@ -188,14 +257,12 @@
                 				
 				initCamera(scene);
 				initScene(scene);
-				//addSysInfoToScene(scene, xyzData);
+				
 				addSysInfoPointCloudToScene(scene, xyzData);
 				initControls(camera);
 				initRenderer();
 				initHandlers();
-
-				//addSysInfoToDropDown(xyzData, '#ddlSystems');
-
+				
 				$('#ddlSystemsHidden').select2({
                     width: 300,
 				    placeholder: 'Select a System',
@@ -234,13 +301,13 @@
 			    camera.lookAt(scene.position);    
 			}
 
-			function addSysInfoToDropDown(sysInfo, ddl) {
-			    var sorted = _.sortBy(sysInfo, function (o) { return o.system; });
+			//function addSysInfoToDropDown(sysInfo, ddl) {
+			//    var sorted = _.sortBy(sysInfo, function (o) { return o.system; });
 
-			    $.each(sorted, function (index, value) {
-			        $(ddl).append($('<option/>', { value: value.system, text: value.system }));
-			    });
-			}
+			//    $.each(sorted, function (index, value) {
+			//        $(ddl).append($('<option/>', { value: value.system, text: value.system }));
+			//    });
+			//}
 
 			function generatePointCloudGeometry( color, sysInfo ){
 
@@ -406,11 +473,12 @@
 			}
 
 			function initRenderer() {
-			    renderer = new THREE.WebGLRenderer({ antialias: false });
-			    //renderer.setClearColor( scene.fog.color, 1 );
-			    renderer.setSize(window.innerWidth, window.innerHeight);
+			    container = document.getElementById('renderContainer');
 
-			    container = document.getElementById('container');
+			    renderer = new THREE.WebGLRenderer({ antialias: false });			    
+			    renderer.setSize(container.offsetWidth, window.innerHeight);
+
+			    
 			    container.appendChild(renderer.domElement);
 
 			    stats = new Stats();
@@ -440,8 +508,13 @@
 			    // event.preventDefault();
 
 			    // update the mouse variable
-			    mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+			    //mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+			    //mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+                		    
+
+			    mouse.x = (((event.clientX - windowOffset) / container.offsetWidth)) * 2 - 1;
 			    mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+			    
 			}
 
 			function onWindowResize() {
@@ -507,6 +580,33 @@
 			    return null;
 			}
 
+			function showOnlyRouteSystems(show) {
+			    if (show) {
+			        $.each(scene.children, function (index, value) {
+			            if ((value.meshType && (value.meshType == 'sphere' || value.meshType == 'text'))) {
+			                value.visible = false;
+			            }
+			        });
+
+			        $.each(selectionInfo.currentRoute, function (index, value) {
+			            var foundInScene = findSystemInScene(value);
+			            if (foundInScene != null) {
+			                foundInScene.visible = true;
+			            }
+			            var foundInScene = findSystemTextInScene(value);
+			            if (foundInScene != null) {
+			                foundInScene.visible = true;
+			            }
+			        });
+			    } else {
+			        $.each(scene.children, function (index, value) {
+			            if ((value.meshType && (value.meshType == 'sphere' || value.meshType == 'text'))) {
+			                value.visible = true;
+			            }
+			        });
+			    }
+			}
+
             function applySelectionToSystem(selectionInfo, systemName, selectionMaterial) {
             	ensureProximalObjectsCreated(selectionInfo, systemName);
                 selectSceneObject(selectionInfo, systemName, selectionMaterial);
@@ -526,6 +626,10 @@
             			if (foundInScene == null) {
             				resolvedSystems.push(value);
 							addSingleSystemToScene(scene, value);
+            			} else {
+            			    foundInScene.visible = true;
+            			    var text = findSystemTextInScene(value.system);
+            			    text.visible = true;
             			}
             		}
             	});
@@ -607,6 +711,7 @@
                         $('#labelDistance').text(distances);
 
                         drawLinesForShortestPath(shortestPath);
+                        selectionInfo.currentRoute = shortestPath;
                         return true;
                     } else {
                     	return false;
@@ -705,6 +810,16 @@
                 return toReturn;            	
             }
 
+            function findSystemTextInScene(systemName) {
+                var toReturn = null;
+                $.each(scene.children, function (index, value) {
+                    if (value.meshType == 'text' && value.sysInfo.system == systemName) {
+                        toReturn = value;
+                        return false;
+                    }
+                });
+                return toReturn;
+            }
 
             function selectSceneObject(selectionInfo, systemName, selectionMaterial) {
             	var found = findSystemInScene(systemName);
@@ -729,26 +844,28 @@
                     }
                 });
                 selectionInfo.routeSelections = [];
+                selectionInfo.currentRoute = [];
                 $('#labelInfo').text('');
                 displayDistance();
                 displayRoute();
             }
 
             function handlePossibleSelection() {
-                if (selectionInfo.currentIntersectingObject) {
+                if (selectionInfo.currentIntersectingObject && selectionInfo.currentIntersectingObject.visible) {
                     var systemName = selectionInfo.currentIntersectingObject.sysInfo.system;
 
                     if (shiftPressed) {
 
                     } else {
                         applySelectionToSystem(selectionInfo, systemName, routeSelectionMaterial)
-                        syncDropDown('#ddlSystems', systemName);
+                        syncDropDown('#ddlSystemsHidden', systemName);
                     }
                 }
             }
 
             function syncDropDown(dropDownName, systemName) {
-                $(dropDownName).val(systemName);
+                //$(dropDownName).val(systemName);
+                //$(dropDownName).select2("data", [{id: systemName, text: systemName}]);
             }			
 
 			function render() {
