@@ -1,6 +1,7 @@
 <html>
 	<head>
 		<title>ED Galaxy Map</title>
+        <link href="js/select2.css" rel="stylesheet" />
 		<style>
             body 
             {
@@ -32,13 +33,15 @@
                 <br /><label>Left Mouse: Hold to Rotate. Right Mouse: Pan. Mouse Wheel: Zoom</label>
                 <br /><label>Use left mouse or dropdown to build a route.</label>
                 <br /><label>Find Shortest Route will find route between first and second selected systems.</label>                
-                <br />Select System:<select id="ddlSystems"><option></option></select>                
+                <!--<br />Select System:<select id="ddlSystems"><option></option></select>-->
+                <br />Select System:<input type="hidden" id="ddlSystemsHidden"/>                                
                 <!--<br /><button id="btnMoreSystems">Add more systems. Takes 30 seconds.</button>-->
                 <br /><button id="btnClearRoute">Clear Route</button>
                 <br /><button id="btnDistanceDump">Distance Dump</button>
                 <br /><button id="btnShortestRoute">Find Shortest Route using this jump distance:</button><input id="maxJumpDistance" type="text" style="width:40px;" value="7" />                
-                <br /><label id="label1">Route:</label><label id="labelRoute"></label>
-                <br /><label id="label2">Distance:</label><label id="labelDistance"></label>
+                <br /><label id="label1">Info:</label><label id="labelInfo"></label>
+                <br /><label id="label2">Route:</label><label id="labelRoute"></label>
+                <br /><label id="label3">Distance:</label><label id="labelDistance"></label>
                 <br /><textarea id="txtDistances" rows="4" cols="50" style="display:none;"></textarea>
     <!--<br /><input id="txtInput" />-->
 
@@ -55,7 +58,8 @@
 		<script src="js/underscore-min.js"></script>			
 		<script src="gamma-data.js"></script>
         
-        <script src="js/dijkstra-master/graph.js"></script>		
+        <script src="js/dijkstra-master/graph.js"></script>		        
+        <script src="js/select2.min.js"></script>
 
         <!-- load the font files -->
 
@@ -119,7 +123,7 @@
                 });
 
                 $("#btnShortestRoute").click(function () {
-                    shortestRoute($('#maxJumpDistance').val());
+                    findShortestRoute($('#maxJumpDistance').val());
                 });
 
                 $("#btnDistanceDump").click(function () {
@@ -129,8 +133,8 @@
                     $("#btnDistanceDump").hide();
                 });
 
-                $("#ddlSystems").change(function () {
-                    var systemName = $("#ddlSystems option:selected").text();
+                $("#ddlSystemsHidden").change(function (e) {
+                    var systemName = e.val;
                     applySelectionToSystem(selectionInfo, systemName, routeSelectionMaterial);
                 });
 
@@ -190,7 +194,25 @@
 				initRenderer();
 				initHandlers();
 
-				addSysInfoToDropDown(xyzData, '#ddlSystems');				
+				//addSysInfoToDropDown(xyzData, '#ddlSystems');
+
+				$('#ddlSystemsHidden').select2({
+                    width: 300,
+				    placeholder: 'Select a System',
+				    minimumInputLength: 2,
+				    query: function (query) {
+				        var sorted = _.sortBy(xyzData, function (o) { return o.system; });
+				        var data = { results: [] };
+				        var queryTerm = query.term.toLowerCase();
+				        for (var i = 0; i < sorted.length; i++) {
+				            var current = sorted[i].system;
+				            if (current.toLowerCase().indexOf(queryTerm) == 0) {
+				                data.results.push({ id: current, text: current });
+				            }
+				        }
+				        query.callback(data);
+				    }
+				});
 
 			}
 
@@ -532,6 +554,38 @@
                 $('#labelDistance').text(totalDistance.toFixed(2));
             }
 
+            function findShortestRoute(maxJumpDistance) {
+
+                maxJumpDistance = +maxJumpDistance; // force to int
+	            var currentDistanceCheck = maxJumpDistance;
+	            var numberOfAttempts = 10;
+	            var found = false;
+
+	            for (var i = 0; i < numberOfAttempts; i++) {		            
+		            if (shortestRoute(currentDistanceCheck)) {
+			            found = true;
+			            break;
+		            }
+		            currentDistanceCheck = maxJumpDistance + i;
+	            }
+
+	            if (found) {
+		            if (currentDistanceCheck != maxJumpDistance) {
+    		            $('#labelInfo').text('Could not make trip with ' + maxJumpDistance + 'LY jump, but found a route with ' + currentDistanceCheck + 'LY jumps');
+        	            //$('#labelDistance').text("");
+		            } else {
+		                $('#labelInfo').text('Route found.');
+		                displayDistance();
+		                displayRoute();
+		            }
+
+	            } else {
+    	            $('#labelRoute').text('Cannot make this trip');
+                    $('#labelDistance').text("");
+	            }
+
+            }
+
             function shortestRoute(maxJumpDistance) {
 
                 if (selectionInfo.routeSelections[0] && selectionInfo.routeSelections[1]) {
@@ -553,11 +607,10 @@
                         $('#labelDistance').text(distances);
 
                         drawLinesForShortestPath(shortestPath);
+                        return true;
                     } else {
-                        $('#labelRoute').text('Cannot make this trip');
-                        $('#labelDistance').text("");
+                    	return false;
                     }
-
                 }
             }
 
@@ -676,6 +729,7 @@
                     }
                 });
                 selectionInfo.routeSelections = [];
+                $('#labelInfo').text('');
                 displayDistance();
                 displayRoute();
             }
