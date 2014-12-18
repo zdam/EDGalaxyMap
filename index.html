@@ -703,21 +703,22 @@
 
             function megaShortestRoute(maxJumpDistance) {
 
-                ensureSystemsInPathArePopulated();
+                for (var i = 0; i < selectionInfo.routeSelections.length - 1; i++) {
+                    var start = selectionInfo.routeSelections[i];
+                    var end = selectionInfo.routeSelections[i+1];
 
-                findShortestRoute(maxJumpDistance)
-                
+                    ensureSystemsInPathArePopulated(start, end);
+                    findShortestRoute(maxJumpDistance, start, end)
+                }
             }
 
-            function ensureSystemsInPathArePopulated() {
+            function ensureSystemsInPathArePopulated(start, end) {
 
                 var endpointReached = false;
 
-                var start = selectionInfo.routeSelections[0].sysInfo;
-                var destination = selectionInfo.routeSelections[1].sysInfo;
-                var destVec = new THREE.Vector3(destination.x, destination.y, destination.z)
+                var destVec = new THREE.Vector3(end.x, end.y, end.z)
 
-                var currentPathCentre = start;                
+                var currentPathCentre = start.sysInfo;                
 
                 while (!endpointReached) {
                     var sphere = new THREE.Sphere(new THREE.Vector3(currentPathCentre.x, currentPathCentre.y, currentPathCentre.z), 40);
@@ -745,7 +746,7 @@
                 }
             }
 
-            function findShortestRoute(maxJumpDistance) {
+            function findShortestRoute(maxJumpDistance, start, end) {
 
                 maxJumpDistance = +maxJumpDistance; // force to int
 	            var currentDistanceCheck = maxJumpDistance;
@@ -754,7 +755,7 @@
 
 	            var shortestRoute = null;
 	            for (var i = 0; i < numberOfAttempts; i++) {
-	                routeInfo = calcShortestRoute(currentDistanceCheck);
+	                routeInfo = calcShortestRoute(currentDistanceCheck, start, end);
 		            if (routeInfo != null) {
 			            found = true;
 			            break;
@@ -776,9 +777,9 @@
 
             }
 
-            function calcShortestRoute(maxJumpDistance) {
+            function calcShortestRoute(maxJumpDistance, start, end) {
 
-                if (selectionInfo.routeSelections[0] && selectionInfo.routeSelections[1]) {
+                if (start && end) {
 
                     var distanceDump = distanceDumper(resolvedSystems);
                     if (!maxJumpDistance) {
@@ -789,7 +790,7 @@
 
                     var graph = new Graph(map);
                 
-                    var shortestPath = graph.findShortestPath(selectionInfo.routeSelections[0].sysInfo.system, selectionInfo.routeSelections[1].sysInfo.system);
+                    var shortestPath = graph.findShortestPath(start.sysInfo.system, end.sysInfo.system);
 
                     if (shortestPath) {
                         var distances = getDistancesForShortestRoute(distanceDump, shortestPath);                        
