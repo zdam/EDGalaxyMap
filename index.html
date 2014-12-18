@@ -67,10 +67,12 @@
                         <br /><button id="btnClearRoute">Clear Route</button>
 
                         <br /><button id="btnShortestRoute">Find Shortest Route using this jump distance:</button><input id="maxJumpDistance" type="text" style="width:40px;" value="7" />
-                        <br /><label id="label1">Info:</label><label id="labelInfo"></label>
-                        <br /><label id="label2">Route:</label><label id="labelRoute"></label>
-                        <br /><label id="label3">Distance:</label><label id="labelDistance"></label>
+                        <br /><label id="label1">Info:</label><label id="labelInfo"></label>                        
+                        <br /><label id="label3">Distance:</label><label id="labelTotalDistance"></label>
                         <br /><input type="checkbox" id="chkShowOnlyRouteSystems" />Show only Route Systems
+                        <br />
+                        <ul id="routeTable">                            
+                        </ul>
                     </div>
                     <div id="tabPanelHistory" class="tabPanel hidden">
                         Coming soon!
@@ -641,8 +643,7 @@
             function applySelectionToSystem(selectionInfo, systemName, selectionMaterial) {
             	ensureProximalObjectsCreated(systemName);
                 selectSceneObject(selectionInfo, systemName, selectionMaterial);
-                displayDistance();
-                displayRoute();
+                displayDistance();                
             }
 
             function ensureProximalObjectsCreated(systemName) {
@@ -686,7 +687,18 @@
                     }
                 });
 
-                $('#labelDistance').text(totalDistance.toFixed(2));
+                $('#labelTotalDistance').text(totalDistance.toFixed(2));
+            }
+
+            function updateRouteTable(routeInfo) {
+                if (routeInfo == null) {
+                    $("#routeTable").empty();
+                } else {
+                    for (var i = 0; i < routeInfo.paths.length; i++) {
+                        var dist = i == routeInfo.paths.length-1 ? 'Done!' : routeInfo.distances[i];
+                        $('#routeTable').append('<li>' + routeInfo.paths[i] + '...  ' + dist + '</li>');
+                    }
+                }
             }
 
             function megaShortestRoute(maxJumpDistance) {
@@ -740,8 +752,10 @@
 	            var numberOfAttempts = 10;
 	            var found = false;
 
-	            for (var i = 0; i < numberOfAttempts; i++) {		            
-		            if (calcShortestRoute(currentDistanceCheck)) {
+	            var shortestRoute = null;
+	            for (var i = 0; i < numberOfAttempts; i++) {
+	                routeInfo = calcShortestRoute(currentDistanceCheck);
+		            if (routeInfo != null) {
 			            found = true;
 			            break;
 		            }
@@ -750,17 +764,14 @@
 
 	            if (found) {
 		            if (currentDistanceCheck != maxJumpDistance) {
-    		            $('#labelInfo').text('Could not make trip with ' + maxJumpDistance + 'LY jump, but found a route with ' + currentDistanceCheck + 'LY jumps');
-        	            //$('#labelDistance').text("");
+    		            $('#labelInfo').text('Could not make trip with ' + maxJumpDistance + 'LY jump, but found a route with ' + currentDistanceCheck + 'LY jumps');        	            
 		            } else {
-		                $('#labelInfo').text('Route found.');
-		                displayDistance();
-		                displayRoute();
+		                $('#labelInfo').text('Route found.');		                
 		            }
-
+		            updateRouteTable(routeInfo);
 	            } else {
-    	            $('#labelRoute').text('Cannot make this trip');
-    	            $('#labelDistance').text("");
+    	            $('#labelInfo').text('Cannot make this trip');
+    	            $('#labelTotalDistance').text("");
 	            }
 
             }
@@ -781,15 +792,12 @@
                     var shortestPath = graph.findShortestPath(selectionInfo.routeSelections[0].sysInfo.system, selectionInfo.routeSelections[1].sysInfo.system);
 
                     if (shortestPath) {
-                        $('#labelRoute').text(shortestPath);
-                        var distances = getDistancesForShortestRoute(distanceDump, shortestPath);
-                        $('#labelDistance').text(distances);
-
+                        var distances = getDistancesForShortestRoute(distanceDump, shortestPath);                        
                         drawLinesForShortestPath(shortestPath);
                         selectionInfo.currentRoute = shortestPath;
-                        return true;
+                        return { paths: shortestPath, distances: distances };
                     } else {
-                    	return false;
+                    	return null;
                     }
                 }
             }
@@ -831,7 +839,7 @@
                         }
                     }
                 }
-                return distances.join();
+                return distances;
             }
 
             function buildMap(distanceDump, maxJumpDistance) {
@@ -931,8 +939,8 @@
                 selectionInfo.routeSelections = [];
                 selectionInfo.currentRoute = [];
                 $('#labelInfo').text('');
-                displayDistance();
-                displayRoute();
+                $('#labelTotalDistance').text('');
+                updateRouteTable(null);
             }
 
             function handlePossibleSelection() {
