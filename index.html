@@ -63,7 +63,7 @@
                         <br /><label>Find Shortest Route will find route between first and second selected systems.</label>
                         <!--<br />Select System:<select id="ddlSystems"><option></option></select>-->
                         <br /><input type="hidden" id="ddlSystemsHidden" />
-                        <!--<br /><button id="btnMoreSystems">Debugging Button</button>-->
+                        <br /><button id="btnMoreSystems">Debugging Button</button>
                         <br /><button id="btnClearRoute">Clear Route</button>
 
                         <br /><button id="btnShortestRoute">Find Shortest Route using this jump distance:</button><input id="maxJumpDistance" type="text" style="width:40px;" value="7" />
@@ -167,7 +167,7 @@
                             //url: 'http://adamapi:api123adam@010102.de/external/heatmap',
                             url: 'http://010102.de/external/heatmap',
                             //data: JSON.stringify(query),
-                            dataType: 'jsonp',
+                            dataType: 'json',
                             username: 'adamapi',
                             password: 'api123adam',
                             crossDomain: true,
@@ -199,7 +199,8 @@
                 });
 
                 $("#btnShortestRoute").click(function () {
-                    findShortestRoute($('#maxJumpDistance').val());
+                    var maxDist = $('#maxJumpDistance').val();
+                    megaShortestRoute(maxDist);
                 });
 
                 $("#btnDistanceDump").click(function () {
@@ -638,13 +639,13 @@
 			}
 
             function applySelectionToSystem(selectionInfo, systemName, selectionMaterial) {
-            	ensureProximalObjectsCreated(selectionInfo, systemName);
+            	ensureProximalObjectsCreated(systemName);
                 selectSceneObject(selectionInfo, systemName, selectionMaterial);
                 displayDistance();
                 displayRoute();
             }
 
-            function ensureProximalObjectsCreated(selectionInfo, systemName) {
+            function ensureProximalObjectsCreated(systemName) {
 				
             	var current = _.find(xyzData, function(o){ return o.system == systemName});	
             	
@@ -688,6 +689,50 @@
                 $('#labelDistance').text(totalDistance.toFixed(2));
             }
 
+            function megaShortestRoute(maxJumpDistance) {
+
+                ensureSystemsInPathArePopulated();
+
+                findShortestRoute(maxJumpDistance)
+                
+            }
+
+            function ensureSystemsInPathArePopulated() {
+
+                var endpointReached = false;
+
+                var start = selectionInfo.routeSelections[0].sysInfo;
+                var destination = selectionInfo.routeSelections[1].sysInfo;
+                var destVec = new THREE.Vector3(destination.x, destination.y, destination.z)
+
+                var currentPathCentre = start;                
+
+                while (!endpointReached) {
+                    var sphere = new THREE.Sphere(new THREE.Vector3(currentPathCentre.x, currentPathCentre.y, currentPathCentre.z), 40);
+                    var currentSystemsInScene = getSystemsInScene();
+                    var currentSmallestDistance = 999999999;
+
+                    $.each(currentSystemsInScene, function (index, value) {
+                        var vec = new THREE.Vector3(value.sysInfo.x, value.sysInfo.y, value.sysInfo.z);
+
+                        if (sphere.containsPoint(vec)) {
+                            var dist = vec.distanceTo(destVec);
+                            if (dist < currentSmallestDistance) {
+                                currentSmallestDistance = dist;
+                                currentPathCentre = value.sysInfo;                                
+                            }
+                        }
+
+                        if (sphere.containsPoint(destVec)) {
+                            endpointReached = true;
+                        }
+                    });
+
+                    // Now we resolve a new set of systems around the selected one
+                    ensureProximalObjectsCreated(currentPathCentre.system);
+                }
+            }
+
             function findShortestRoute(maxJumpDistance) {
 
                 maxJumpDistance = +maxJumpDistance; // force to int
@@ -696,7 +741,7 @@
 	            var found = false;
 
 	            for (var i = 0; i < numberOfAttempts; i++) {		            
-		            if (shortestRoute(currentDistanceCheck)) {
+		            if (calcShortestRoute(currentDistanceCheck)) {
 			            found = true;
 			            break;
 		            }
@@ -715,12 +760,12 @@
 
 	            } else {
     	            $('#labelRoute').text('Cannot make this trip');
-                    $('#labelDistance').text("");
+    	            $('#labelDistance').text("");
 	            }
 
             }
 
-            function shortestRoute(maxJumpDistance) {
+            function calcShortestRoute(maxJumpDistance) {
 
                 if (selectionInfo.routeSelections[0] && selectionInfo.routeSelections[1]) {
 
@@ -827,6 +872,16 @@
                     dump += distanceDump[i].systemFrom + ',' + distanceDump[i].systemTo + ',' + distanceDump[i].distance + '\n';
                 }
                 return dump;
+            }
+
+            function getSystemsInScene() {
+                var toReturn = [];
+                $.each(scene.children, function (index, value) {
+                    if (value.meshType == 'sphere') {
+                        toReturn.push(value);                        
+                    }
+                });
+                return toReturn;
             }
 
             function findSystemInScene(systemName) {
