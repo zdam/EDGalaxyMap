@@ -130,61 +130,28 @@
 
                     setTimeout(function () {
                         
-                        //var query = {
-					    //    ver:2, 
-					    //    test:true,
-					    //    outputmode:2, 
-					    //    filter:{
-					    //        knownstatus:0,
-					    //        //systemname: "sol",
-					    //        cr:5,
-					    //        date:"2014-09-18 12:34:56",
-					    //        coordcube: [[-10,10],[-10,10],[-10,10]],
-					    //        coordsphere: {radius: 123.45, origin: [10,20,30]}
-					    //    }
-					    //};
-
-
-                        //$.ajax({
-                        //type: 'POST',
-                        //contentType: 'application/json; charset=utf-8',
-                        //url: 'http://edstarcoordinator.com/api.asmx/GetSystems',
-                        //data: JSON.stringify(query),
-                        //dataType: 'json',
-                        //success:
-                        //    function (data) {
-                        //    var f = '';
-                        //    },
-                        //error:
-    	                //    function (d,a){
-    		            //        var ss = '';
-    	                //    }	 
-                        //});
 
 
 
-                        $.ajax({
-                            type: 'GET',
-                            contentType: 'application/json; charset=utf-8',
-                            //url: 'http://adamapi:api123adam@010102.de/external/heatmap',
-                            url: 'http://010102.de/external/heatmap',
-                            //data: JSON.stringify(query),
-                            dataType: 'json',
-                            username: 'adamapi',
-                            password: 'api123adam',
-                            crossDomain: true,
-                            xhrFields: {
-                                withCredentials: true
-                            },
-                            success:
-                                function (data) {
-                                    var f = '';
-                                },
-                            error:
-                                function (d, a) {
-                                    var ss = '';
-                                }
-                        });
+
+
+
+
+$.ajax({
+type: 'GET',
+url: 'http://010102.de/api/external/heatmap',
+xhrFields: {
+withCredentials: true
+},
+username: 'adamapi',
+password: 'api123adam',
+success: function() {
+console.log('success');
+},
+error: function() {
+console.log('failure');
+}
+});
 
 
 
