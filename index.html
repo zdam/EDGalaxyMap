@@ -78,7 +78,8 @@
                         Coming soon!
                     </div>
                     <div id="tabPanelHeatmap" class="tabPanel hidden">
-                        Coming soon!
+                        <br /><button id="btnGlobalHeatmap">Toggle Global Heatmap</button>
+                        
 
                     </div>
                     <div id="tabPanelUtils" class="tabPanel hidden">
@@ -105,6 +106,7 @@
         <script src="js/libs/stats.min.js"></script>
 		<script src="js/underscore-min.js"></script>			
 		<script src="gamma-data.js"></script>
+		<script src="heatmap.js"></script>
         
         <script src="js/dijkstra-master/graph.js"></script>		        
         <script src="js/select2.min.js"></script>
@@ -194,6 +196,10 @@ password: 'api123adam',
                     showOnlyRouteSystems($(this).is(':checked'));
                 });
 
+                $('#btnGlobalHeatmap').click(function () {
+                	toggleGlobalHeatmapDisplay();
+                });
+
             });
 
             // Todo list
@@ -217,6 +223,7 @@ password: 'api123adam',
 			var camera, controls, scene, renderer;			
 			var projector, mouse = { x: 0, y: 0 };
 
+
 			var selectionInfo = {
                 currentIntersectingObject: {},
                 routeSelections: [],
@@ -227,14 +234,22 @@ password: 'api123adam',
 			var unselectedColor = 0xffffff;
 			var hoverColor = 0xffff00;
 			var routeSelectionColor = 0xff69b4;
+			var greenColor = 0x008000;
+			var redColor = 0xff0000;
 			var unselectedMaterial = new THREE.MeshLambertMaterial({ color: unselectedColor, shading: THREE.FlatShading });
+			var heatmapMaterial = new THREE.MeshLambertMaterial({ color: redColor, shading: THREE.FlatShading });
+			heatmapMaterial.opacity = 0.5;
+			heatmapMaterial.transparent = true;
 			var hoverMaterial = new THREE.MeshLambertMaterial({ color: hoverColor, shading: THREE.FlatShading });
 			var routeSelectionMaterial = new THREE.MeshLambertMaterial({ color: routeSelectionColor, shading: THREE.FlatShading });
-			var sphereGeometry = new THREE.SphereGeometry(3,4,4);
+			var plainSphereGeometry = new THREE.SphereGeometry(3,4,4);
+			var heatmapSphereGeometryMap = {};
 
 			var keyboard = new KeyboardState();
 			var ctrlPressed = false;
 			var shiftPressed = false;
+
+			var globalHeatmapVisible = false;
 
 
 			handleTabClick('tabButtonPlan');
@@ -369,21 +384,53 @@ password: 'api123adam',
 			    }
 			}
 
-			function addSingleSystemToScene(scene, singleSystem) {
+			function toggleGlobalHeatmapDisplay() {
+			        $.each(fakeHeatmapData, function (index, value) {
+			        	ensureProximalObjectsCreated(value.name, 5)
 
-			    var material = unselectedMaterial;
+			        	renderHeatmapInfo(value);
+			        });
+			}
 
-		        var mesh = new THREE.Mesh(sphereGeometry, material);
+			function renderHeatmapInfo(info) {
+				var heatmapGeometry = getHeatmapSphereGeometry(info.marker.radius);
+				var found = _.find(xyzData, function(o) { return o.system == info.name});
+				if (found) {
+					addSphere(scene, found, 'heatmapSphere', heatmapGeometry, heatmapMaterial, false)
+				}
+				
+				//info.marker.radius
+			}
+
+			function getHeatmapSphereGeometry(radius) {
+				var existing = _.find(heatmapSphereGeometryMap, function(o){ return o.radius == radius});
+				if (existing)
+					return existing;
+				var newby = new THREE.SphereGeometry(radius*2,8,8);
+				heatmapSphereGeometryMap[radius] = newby;
+				return newby;
+			}
+
+			function addSphere(scene, singleSystem, sphereType, sphereGeometry, sphereMaterial, addSysInfo) {
+			    
+
+		        var mesh = new THREE.Mesh(sphereGeometry, sphereMaterial);
 		        mesh.position.x = (singleSystem.x) * scale;
 		        mesh.position.y = (singleSystem.y) * scale;
 		        mesh.position.z = (singleSystem.z) * scale;
 		        mesh.updateMatrix();
 		        mesh.matrixAutoUpdate = false;
-		        mesh.sysInfo = singleSystem;
-		        mesh.meshType = 'sphere';
+		        mesh.meshType = sphereType;
+
+		        if (addSysInfo)
+		        	mesh.sysInfo = singleSystem;
 
 		        scene.add(mesh);
 
+		        return mesh;
+			}
+
+			function addText(scene, singleSystem, sisterMesh) {
                 // Billboard sprites for names. 
 		        //var spritey = makeTextSprite(sysInfo[i].system,
                 //    {
@@ -395,6 +442,8 @@ password: 'api123adam',
 		        //spritey.sysInfo = sysInfo[i];
 		        //scene.add(spritey);
 
+
+			    var material = unselectedMaterial;
 
                 // real 3d objects for names
 		        var textOptions = {
@@ -412,10 +461,17 @@ password: 'api123adam',
 		        labelMesh.sysInfo = singleSystem;
 		        labelMesh.meshType = 'text';
 
-		        mesh.sisterMesh = labelMesh;
-		        labelMesh.sisterMesh = mesh;
+		        sisterMesh.sisterMesh = labelMesh;
+		        labelMesh.sisterMesh = sisterMesh;
 
 		        scene.add(labelMesh);
+			}
+
+			function addSingleSystemToScene(scene, singleSystem) {
+
+				var mesh = addSphere(scene, singleSystem, 'sphere', plainSphereGeometry, unselectedMaterial, true);
+
+				addText(scene, singleSystem, mesh);
 			}
 
 			function initScene(scene) {
@@ -575,9 +631,14 @@ password: 'api123adam',
 			    // if there is one (or more) intersections
 			    if (intersects.length > 0) {
 			        // if the closest object intersected has sysInfo (ie we want to be able to select it)
-			        if (intersects[0].object.sysInfo) {
-			            return intersects[0].object;
+			        for (var i = 0; i < intersects.length; i++) {
+			        	if (intersects[i].object.sysInfo) {
+			        		return intersects[i].object;
+			        	}
 			        }
+			        //if (intersects[0].object.sysInfo) {
+			        //    return intersects[0].object;
+			        //}
 			    }
 			    return null;
 			}
@@ -610,30 +671,33 @@ password: 'api123adam',
 			}
 
             function applySelectionToSystem(selectionInfo, systemName, selectionMaterial) {
-            	ensureProximalObjectsCreated(systemName);
+            	ensureProximalObjectsCreated(systemName, 30);
                 selectSceneObject(selectionInfo, systemName, selectionMaterial);
                 displayDistance();                
             }
 
-            function ensureProximalObjectsCreated(systemName) {
+            function ensureProximalObjectsCreated(systemName, radius) {
 				
             	var current = _.find(xyzData, function(o){ return o.system == systemName});	
             	
-            	var sphere = new THREE.Sphere(new THREE.Vector3(current.x, current.y, current.z), 30);
+            	if (current) {
+	            	var sphere = new THREE.Sphere(new THREE.Vector3(current.x, current.y, current.z), radius);
 
-            	$.each(xyzData, function(index, value) {
-            		if (sphere.containsPoint(new THREE.Vector3(value.x,value.y,value.z))) {
-            			var foundInScene = findSystemInScene(value.system);
-            			if (foundInScene == null) {
-            				resolvedSystems.push(value);
-							addSingleSystemToScene(scene, value);
-            			} else {
-            			    foundInScene.visible = true;
-            			    var text = findSystemTextInScene(value.system);
-            			    text.visible = true;
-            			}
-            		}
-            	});
+	            	$.each(xyzData, function(index, value) {
+	            		if (sphere.containsPoint(new THREE.Vector3(value.x,value.y,value.z))) {
+	            			var foundInScene = findSystemInScene(value.system);
+	            			if (foundInScene == null) {
+	            				resolvedSystems.push(value);
+								addSingleSystemToScene(scene, value);
+	            			} else {
+	            			    foundInScene.visible = true;
+	            			    var text = findSystemTextInScene(value.system);
+	            			    text.visible = true;
+	            			}
+	            		}
+	            	});            		
+            	}
+
             }
 
             function displayRoute() {
@@ -711,7 +775,7 @@ password: 'api123adam',
                     });
 
                     // Now we resolve a new set of systems around the selected one
-                    ensureProximalObjectsCreated(currentPathCentre.system);
+                    ensureProximalObjectsCreated(currentPathCentre.system, 30);
                 }
             }
 
@@ -967,14 +1031,16 @@ password: 'api123adam',
 			function setColor(mesh, material) {
 			    if (mesh && mesh.material) {			        
 			        mesh.material = material;
-			        mesh.sisterMesh.material = mesh.material;
+			        if (mesh.sisterMesh)
+			        	mesh.sisterMesh.material = mesh.material;
 			    }
 			}
 
 			function unsetColor(mesh) {
 			    if (mesh && mesh.material) {
 			        mesh.material = unselectedMaterial;
-			        mesh.sisterMesh.material = mesh.material;
+			        if (mesh.sisterMesh)
+			        	mesh.sisterMesh.material = mesh.material;
 			    }
 			}
 
