@@ -79,7 +79,11 @@
                     </div>
                     <div id="tabPanelHeatmap" class="tabPanel hidden">
                         <br /><button id="btnGlobalHeatmap">Toggle Global Heatmap</button>
-                        
+                        <br />
+                        <div>
+                        <ul id="heatmapTable">                            
+                        </ul>
+                        </div>
 
                     </div>
                     <div id="tabPanelUtils" class="tabPanel hidden">
@@ -234,16 +238,18 @@ password: 'api123adam',
 			var unselectedColor = 0xffffff;
 			var hoverColor = 0xffff00;
 			var routeSelectionColor = 0xff69b4;
+			var yellowColor = 0xffff00;
 			var greenColor = 0x008000;
 			var redColor = 0xff0000;
 			var unselectedMaterial = new THREE.MeshLambertMaterial({ color: unselectedColor, shading: THREE.FlatShading });
-			var heatmapMaterial = new THREE.MeshLambertMaterial({ color: redColor, shading: THREE.FlatShading });
-			heatmapMaterial.opacity = 0.5;
+			var heatmapMaterial = new THREE.MeshLambertMaterial({ color: redColor, shading: THREE.SmoothShading });
+			heatmapMaterial.opacity = 0.7;
 			heatmapMaterial.transparent = true;
 			var hoverMaterial = new THREE.MeshLambertMaterial({ color: hoverColor, shading: THREE.FlatShading });
 			var routeSelectionMaterial = new THREE.MeshLambertMaterial({ color: routeSelectionColor, shading: THREE.FlatShading });
 			var plainSphereGeometry = new THREE.SphereGeometry(3,4,4);
 			var heatmapSphereGeometryMap = {};
+			var heatmapSphereMaterialMap = {};
 
 			var keyboard = new KeyboardState();
 			var ctrlPressed = false;
@@ -385,34 +391,78 @@ password: 'api123adam',
 			}
 
 			function toggleGlobalHeatmapDisplay() {
+					globalHeatmapVisible = !globalHeatmapVisible;
 			        $.each(fakeHeatmapData, function (index, value) {
-			        	ensureProximalObjectsCreated(value.name, 5)
-
-			        	renderHeatmapInfo(value);
+			        	if (globalHeatmapVisible) {
+			        		ensureProximalObjectsCreated(value.name, 1);
+			        	}
+			        	renderHeatmapInfo(value, globalHeatmapVisible);
 			        });
+			        updateHeatmapTable(fakeHeatmapData, globalHeatmapVisible);
+			        
 			}
 
-			function renderHeatmapInfo(info) {
-				var heatmapGeometry = getHeatmapSphereGeometry(info.marker.radius);
-				var found = _.find(xyzData, function(o) { return o.system == info.name});
-				if (found) {
-					addSphere(scene, found, 'heatmapSphere', heatmapGeometry, heatmapMaterial, false)
+			function renderHeatmapInfo(info, makeVisible) {			
+
+				var heatmapGeometry = getHeatmapSphereGeometry(info.marker.radius * getRadiusModifier(info.marker.radius, info.marker.visits));
+				var heatmapMaterial = getHeatmapSphereMaterial(info.marker.visits);
+				var foundInData = _.find(xyzData, function(o) { return o.system == info.name});
+				if (foundInData) {
+		            var foundInScene = findSystemInScene(info.name, 'heatmapSphere');
+		            if (foundInScene != null) {
+		                foundInScene.visible = makeVisible;
+		            } else {
+		            	addSphere(scene, foundInData, 'heatmapSphere', heatmapGeometry, heatmapMaterial)
+		            }
 				}
-				
-				//info.marker.radius
 			}
 
 			function getHeatmapSphereGeometry(radius) {
 				var existing = _.find(heatmapSphereGeometryMap, function(o){ return o.radius == radius});
 				if (existing)
 					return existing;
-				var newby = new THREE.SphereGeometry(radius*2,8,8);
+				var newby = new THREE.SphereGeometry(radius,8,8);
 				heatmapSphereGeometryMap[radius] = newby;
 				return newby;
 			}
 
-			function addSphere(scene, singleSystem, sphereType, sphereGeometry, sphereMaterial, addSysInfo) {
-			    
+			function getHeatmapSphereMaterial(visits) {
+				var visitsColor = getColorForHeatmapVisits(visits);
+				var existing = _.find(heatmapSphereMaterialMap, function(o){ return o.visitsColor == visitsColor});
+				if (existing)
+					return existing;
+				var cloned = heatmapMaterial.clone();
+				cloned.setValues({color:visitsColor});
+				heatmapSphereMaterialMap[visitsColor] = cloned;
+				return cloned;
+			}
+
+			var maxRadius = 100;
+			var minRadius = 40;
+			var minVisits = 1;
+			var redCutoff = 90;
+			var yellowCutoff = 10;
+
+			function getColorForHeatmapVisits(visits) {
+
+				if (visits >= redCutoff)
+					return redColor;
+				if (visits >= yellowCutoff && visits < redCutoff)
+					return yellowColor;
+				
+				return greenColor;
+			}
+
+			function getRadiusModifier(radius, visits) {
+				if (visits >= redCutoff)
+					return 2.5;
+				if (visits >= yellowCutoff && visits < redCutoff)
+					return 1.2;
+				
+				return 1.8;
+			}
+
+			function addSphere(scene, singleSystem, sphereType, sphereGeometry, sphereMaterial) {
 
 		        var mesh = new THREE.Mesh(sphereGeometry, sphereMaterial);
 		        mesh.position.x = (singleSystem.x) * scale;
@@ -422,8 +472,8 @@ password: 'api123adam',
 		        mesh.matrixAutoUpdate = false;
 		        mesh.meshType = sphereType;
 
-		        if (addSysInfo)
-		        	mesh.sysInfo = singleSystem;
+		        
+		        mesh.sysInfo = singleSystem;
 
 		        scene.add(mesh);
 
@@ -469,7 +519,7 @@ password: 'api123adam',
 
 			function addSingleSystemToScene(scene, singleSystem) {
 
-				var mesh = addSphere(scene, singleSystem, 'sphere', plainSphereGeometry, unselectedMaterial, true);
+				var mesh = addSphere(scene, singleSystem, 'sphere', plainSphereGeometry, unselectedMaterial);
 
 				addText(scene, singleSystem, mesh);
 			}
@@ -630,15 +680,12 @@ password: 'api123adam',
 
 			    // if there is one (or more) intersections
 			    if (intersects.length > 0) {
-			        // if the closest object intersected has sysInfo (ie we want to be able to select it)
+			        // if the closest object intersected has is a system sphere or system text we return it
 			        for (var i = 0; i < intersects.length; i++) {
-			        	if (intersects[i].object.sysInfo) {
+			        	if (intersects[i].object.meshType == 'sphere' || intersects[i].object.meshType == 'text') {
 			        		return intersects[i].object;
 			        	}
 			        }
-			        //if (intersects[0].object.sysInfo) {
-			        //    return intersects[0].object;
-			        //}
 			    }
 			    return null;
 			}
@@ -652,11 +699,11 @@ password: 'api123adam',
 			        });
 
 			        $.each(selectionInfo.currentRoute, function (index, value) {
-			            var foundInScene = findSystemInScene(value);
+			            var foundInScene = findSystemInScene(value, 'sphere');
 			            if (foundInScene != null) {
 			                foundInScene.visible = true;
 			            }
-			            var foundInScene = findSystemTextInScene(value);
+			            var foundInScene = findSystemInScene(value, 'text');
 			            if (foundInScene != null) {
 			                foundInScene.visible = true;
 			            }
@@ -685,13 +732,13 @@ password: 'api123adam',
 
 	            	$.each(xyzData, function(index, value) {
 	            		if (sphere.containsPoint(new THREE.Vector3(value.x,value.y,value.z))) {
-	            			var foundInScene = findSystemInScene(value.system);
+	            			var foundInScene = findSystemInScene(value.system, 'sphere');
 	            			if (foundInScene == null) {
 	            				resolvedSystems.push(value);
 								addSingleSystemToScene(scene, value);
 	            			} else {
 	            			    foundInScene.visible = true;
-	            			    var text = findSystemTextInScene(value.system);
+	            			    var text = findSystemInScene(value.system, 'text');
 	            			    text.visible = true;
 	            			}
 	            		}
@@ -730,6 +777,19 @@ password: 'api123adam',
                     for (var i = 0; i < routeInfo.paths.length; i++) {
                         var dist = i == routeInfo.paths.length-1 ? 'Done!' : routeInfo.distances[i];
                         $('#routeTable').append('<li>' + routeInfo.paths[i] + '...  ' + dist + '</li>');
+                    }
+                }
+            }
+
+            function updateHeatmapTable(heatmapData, makeVisible) {
+                if (!makeVisible) {
+                    $("#heatmapTable").empty();
+                } else {
+                	$('#heatmapTable').append('<li>' + 'System' + '...  ' + 'Visits' + '</li>');
+                    for (var i = 0; i < heatmapData.length; i++) {
+                    	var systemName = heatmapData[i].name;
+                    	var visits = heatmapData[i].marker.visits;
+                        $('#heatmapTable').append('<li>' + systemName + '...  ' + visits + '</li>');
                     }
                 }
             }
@@ -926,10 +986,10 @@ password: 'api123adam',
                 return toReturn;
             }
 
-            function findSystemInScene(systemName) {
+            function findSystemInScene(systemName, meshType) {
             	var toReturn = null;
 				$.each(scene.children, function (index, value) {
-                    if (value.meshType == 'sphere' && value.sysInfo.system == systemName) {
+                    if (value.meshType == meshType && value.sysInfo.system == systemName) {
                         toReturn = value;
                         return false;
                     }
@@ -937,19 +997,8 @@ password: 'api123adam',
                 return toReturn;            	
             }
 
-            function findSystemTextInScene(systemName) {
-                var toReturn = null;
-                $.each(scene.children, function (index, value) {
-                    if (value.meshType == 'text' && value.sysInfo.system == systemName) {
-                        toReturn = value;
-                        return false;
-                    }
-                });
-                return toReturn;
-            }
-
             function selectSceneObject(selectionInfo, systemName, selectionMaterial) {
-            	var found = findSystemInScene(systemName);
+            	var found = findSystemInScene(systemName, 'sphere');
             	if (found != null) {
             		setSelectionObject(selectionInfo, found, selectionMaterial);
             	}                
