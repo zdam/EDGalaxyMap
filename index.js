@@ -14,12 +14,12 @@
 
 $.ajax({
 type: 'GET',
-url: 'http://adamapi:api123adam@010102.de/api/external/heatmap',
+url: 'http://010102.de/api/external/heatmap',
 xhrFields: {
 withCredentials: true
 },
-    beforeSend: function (xhr) { 
-        xhr.setRequestHeader('Authorization', 'Basic ' + btoa('adamapi' + ":" + 'api123adam'));             
+    headers: { 
+        'Authorization': 'Basic ' + btoa('adamapi' + ":" + 'api123adam'));             
     },
 username: 'adamapi',
 password: 'api123adam',
