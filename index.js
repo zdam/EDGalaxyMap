@@ -25,16 +25,16 @@ beforeSend: function (xhr) {
     //headers: { 
     //    'Authorization': 'Basic ' + btoa('adamapi:api123adam')         
     //},
-username: 'adamapi',
-password: 'api123adam',
-                            success:
-                                function (data) {
-                                    var f = '';
-                                },
-                            error:
-                                function (d, a) {
-                                    var ss = '';
-                                }
+//username: 'adamapi',
+//password: 'api123adam',
+success:
+    function (data) {
+        var f = '';
+    },
+error:
+    function (d, a) {
+        var ss = '';
+    }
 });
 
 
