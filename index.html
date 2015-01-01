@@ -91,6 +91,7 @@
 
                     </div>
                     <div id="tabPanelUtils" class="tabPanel hidden">
+                    	<br /><button id="btnRares">Toggle Rares Display</button>
                         <br /><button id="btnDistanceDump">Distance Dump</button>
                         <br /><textarea id="txtDistances" rows="4" cols="50" style="display:none;"></textarea>
                     </div>
@@ -115,6 +116,7 @@
 		<script src="js/underscore-min.js"></script>			
 		<script src="gamma-data.js"></script>
 		<script src="heatmap.js"></script>
+		<script src="rares.js"></script>
         
         <script src="js/dijkstra-master/graph.js"></script>		        
         <script src="js/select2.min.js"></script>
@@ -208,6 +210,10 @@ password: 'api123adam',
                 	toggleGlobalHeatmapDisplay();
                 });
 
+                $('#btnRares').click(function () {
+                	toggleRaresDisplay();
+                });
+
             });
 
             // Todo list
@@ -245,6 +251,7 @@ password: 'api123adam',
 			var yellowColor = 0xffff00;
 			var greenColor = 0x008000;
 			var redColor = 0xff0000;
+			var pinkColor = 0xff69b4;
 			var unselectedMaterial = new THREE.MeshLambertMaterial({ color: unselectedColor, shading: THREE.FlatShading });
 			var heatmapMaterial = new THREE.MeshLambertMaterial({ color: redColor, shading: THREE.SmoothShading });
 			heatmapMaterial.opacity = 0.7;
@@ -260,6 +267,7 @@ password: 'api123adam',
 			var shiftPressed = false;
 
 			var globalHeatmapVisible = false;
+			var raresVisible = false;
 
 
 			handleTabClick('tabButtonPlan');
@@ -392,6 +400,36 @@ password: 'api123adam',
 
 			    	addSingleSystemToScene(scene, sysInfo[i]);			        
 			    }
+			}
+
+			function toggleRaresDisplay() {
+					raresVisible = !raresVisible;
+			        $.each(rares, function (index, value) {
+			        	if (raresVisible) {
+			        		ensureProximalObjectsCreated(value, 1);
+			        	}
+			        	renderRaresInfo(value, raresVisible);
+			        });
+			        //updateHeatmapTable(fakeHeatmapData, globalHeatmapVisible);
+			        
+			}
+
+			function renderRaresInfo(info, makeVisible) {			
+
+				var raresGeometry = new THREE.SphereGeometry(30,8,8);
+				var raresMaterial = new THREE.MeshLambertMaterial({ color: pinkColor, shading: THREE.SmoothShading });
+				raresMaterial.opacity = 0.5;
+				raresMaterial.transparent = true;
+				
+				var foundInData = _.find(xyzData, function(o) { return o.system == info});
+				if (foundInData) {
+		            var foundInScene = findSystemInScene(info.name, 'raresSphere');
+		            if (foundInScene != null) {
+		                foundInScene.visible = makeVisible;
+		            } else {
+		            	addSphere(scene, foundInData, 'raresSphere', raresGeometry, raresMaterial)
+		            }
+				}
 			}
 
 			function toggleGlobalHeatmapDisplay() {
