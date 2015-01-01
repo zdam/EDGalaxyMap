@@ -14,6 +14,7 @@
 
 $.ajax({
 type: 'GET',
+dataType: 'jsonp',
 url: 'http://adamapi:api123adam@010102.de/api/external/heatmap',
 //xhrFields: {
 //withCredentials: true
