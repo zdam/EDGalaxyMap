@@ -20,7 +20,7 @@ url: 'http://adamapi:api123adam@010102.de/api/external/heatmap',
 //withCredentials: true
 //},
 beforeSend: function (xhr) {
-	xhr.setRequestHeader("Authorization" : "Basic" + btoa("adamapi:api123adam"))
+	xhr.setRequestHeader("Authorization", "Basic" + btoa("adamapi:api123adam"))
 },
     //headers: { 
     //    'Authorization': 'Basic ' + btoa('adamapi:api123adam')         
