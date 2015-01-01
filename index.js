@@ -19,7 +19,7 @@ xhrFields: {
 withCredentials: true
 },
     headers: { 
-        'Authorization': 'Basic ' + btoa('adamapi' + ":" + 'api123adam'));             
+        'Authorization': 'Basic ' + btoa('adamapi' + ":" + 'api123adam');             
     },
 username: 'adamapi',
 password: 'api123adam',
