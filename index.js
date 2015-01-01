@@ -15,9 +15,9 @@
 $.ajax({
 type: 'GET',
 url: 'http://010102.de/api/external/heatmap',
-xhrFields: {
-withCredentials: true
-},
+//xhrFields: {
+//withCredentials: true
+//},
     headers: { 
         'Authorization': 'Basic ' + btoa('adamapi' + ":" + 'api123adam')         
     },
