@@ -3,48 +3,24 @@
 
                 $("#btnMoreSystems").click(function () {
 
-                    setTimeout(function () {
-                        
-
-
-
-
-
-
-
 $.ajax({
 type: 'GET',
-//dataType: 'json',
 url: 'http://adamapi:api123adam@010102.de/api/external/heatmap',
 xhrFields: {
-	withCredentials: true
+withCredentials: true
 },
-beforeSend: function (xhr) {
-	xhr.setRequestHeader("Authorization", "Basic " + btoa("adamapi:api123adam"))
-},
-    //headers: { 
-    //    'Authorization': 'Basic ' + btoa('adamapi:api123adam')         
-    //},
-//username: 'adamapi',
-//password: 'api123adam',
-success:
-    function (data) {
-        var f = '';
-    },
-error:
-    function (d, a) {
-        var ss = '';
-    }
+username: 'adamapi',
+password: 'api123adam',
+	success:
+	    function (data) {
+	        var f = '';
+	    },
+	error:
+	    function (d, a) {
+	        var ss = '';
+	    }
 });
 
-
-
-
-
-
-
-                    }, 100)
-                    $("#btnMoreSystems").hide();
                 });
 
                 $("#btnClearRoute").click(function () {
