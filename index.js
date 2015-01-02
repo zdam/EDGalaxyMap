@@ -3,6 +3,7 @@
 
                 $("#btnMoreSystems").click(function () {
 
+// This works, but it pops up an auth dialog that the user must enter, which we want to avoid
 $.ajax({
 type: 'GET',
 url: 'http://adamapi:api123adam@010102.de/api/external/heatmap',
@@ -20,6 +21,35 @@ password: 'api123adam',
 	        var ss = '';
 	    }
 });
+
+// If I attempt to pass the credentials via a header, the call gets changed to an OPTIONS call (a preflight call)
+// and the server returns a 401. Some say that the server needs to handle an OPTIONS call and return a 200 or a 403
+/*
+$.ajax({
+type: 'GET',
+//dataType: 'json',
+url: 'http://adamapi:api123adam@010102.de/api/external/heatmap',
+xhrFields: {
+	withCredentials: true
+},
+beforeSend: function (xhr) {
+	xhr.setRequestHeader("Authorization", "Basic " + btoa("adamapi:api123adam"))
+},
+    //headers: { 
+    //    'Authorization': 'Basic ' + btoa('adamapi:api123adam')         
+    //},
+//username: 'adamapi',
+//password: 'api123adam',
+success:
+    function (data) {
+        var f = '';
+    },
+error:
+    function (d, a) {
+        var ss = '';
+    }
+});
+*/
 
                 });
 
