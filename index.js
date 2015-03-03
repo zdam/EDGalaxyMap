@@ -417,7 +417,8 @@ error:
 		        var textOptions = {
 		            size: 10,
 		            height: 1,
-                    curveSegments: 2
+                    curveSegments: 2,
+                    font: 'helvetiker'
 		        };
 		        var label = new THREE.TextGeometry(singleSystem.system, textOptions);
 		        var labelMesh = new THREE.Mesh(label, material);
