@@ -399,41 +399,47 @@ error:
 			}
 
 			function addText(scene, singleSystem, sisterMesh) {
-                // Billboard sprites for names. 
-		        //var spritey = makeTextSprite(sysInfo[i].system,
-                //    {
-                //        fontsize: 32,
-                //        fontface: "Georgia",
-                //        borderColor: { r: 0, g: 0, b: 255, a: 1.0 }
-                //    });
-		        //spritey.position.set(sysInfo[i].x * scale, sysInfo[i].y * scale, sysInfo[i].z * scale);
-		        //spritey.sysInfo = sysInfo[i];
-		        //scene.add(spritey);
 
+				var useBillboards = false;
+				
+				if (useBillboards) {
+					// Billboard sprites for names. 
+			        var spritey = makeTextSprite(singleSystem.system,
+	                    {
+	                        fontsize: 32,
+	                        fontface: "helvetiker",
+	                        borderColor: { r: 0, g: 0, b: 255, a: 1.0 }
+	                    });
+			        spritey.position.set(singleSystem.x * scale, singleSystem.y * scale, singleSystem.z * scale);
+			        spritey.sysInfo = singleSystem;
+			        scene.add(spritey);
 
-			    var material = unselectedMaterial;
+				} else {
 
-                // real 3d objects for names
-		        var textOptions = {
-		            size: 10,
-		            height: 1,
-                    curveSegments: 2,
-                    font: 'helvetiker'
-		        };
-		        var label = new THREE.TextGeometry(singleSystem.system, textOptions);
-		        var labelMesh = new THREE.Mesh(label, material);
-		        labelMesh.position.x = (singleSystem.x) * scale;
-		        labelMesh.position.y = (singleSystem.y - 2) * scale;
-		        labelMesh.position.z = (singleSystem.z) * scale;
-		        labelMesh.updateMatrix();
-		        //labelMesh.matrixAutoUpdate = false;
-		        labelMesh.sysInfo = singleSystem;
-		        labelMesh.meshType = 'text';
+				    var material = unselectedMaterial;
 
-		        sisterMesh.sisterMesh = labelMesh;
-		        labelMesh.sisterMesh = sisterMesh;
+	                // real 3d objects for names
+			        var textOptions = {
+			            size: 10,
+			            height: 1,
+	                    curveSegments: 2,
+	                    font: 'helvetiker'
+			        };
+			        var label = new THREE.TextGeometry(singleSystem.system, textOptions);
+			        var labelMesh = new THREE.Mesh(label, material);
+			        labelMesh.position.x = (singleSystem.x) * scale;
+			        labelMesh.position.y = (singleSystem.y - 2) * scale;
+			        labelMesh.position.z = (singleSystem.z) * scale;
+			        labelMesh.updateMatrix();
+			        //labelMesh.matrixAutoUpdate = false;
+			        labelMesh.sysInfo = singleSystem;
+			        labelMesh.meshType = 'text';
 
-		        scene.add(labelMesh);
+			        sisterMesh.sisterMesh = labelMesh;
+			        labelMesh.sisterMesh = sisterMesh;
+
+			        scene.add(labelMesh);
+				}
 			}
 
 			function addSingleSystemToScene(scene, singleSystem) {
