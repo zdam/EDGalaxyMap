@@ -1,58 +1,13 @@
+<!DOCTYPE html>
 <html>
 	<head>
 		<title>ED Galaxy Map</title>
-        <link href="js/select2.css" rel="stylesheet" />
-		<style>
-            body 
-            {
-	            font-family: Monospace;
-	            font-weight: bold;	            
-	            margin: 0px;
-	            overflow: hidden;
-                background-color: black;
-                
-  -webkit-user-select: none;
-  -moz-user-select: none;
-  user-select: none;
-            }
-            canvas { width: 100%; height: 100% }
-            #controls
-            {
-              /*background-color: black;*/
-              top: 0px;
-              left: 10px;
-              position: absolute;
-              width: 100%;
-              color: white;
-              z-index:5;
-            }
-            #left
-            {
-              width: 300px;
-              float: left;
-              
-            }
-            #right
-            {
-              margin-left: 300px; /* Change this to whatever the width of your left column is ALSO change var windowOffset below */
-            }
-            .clear
-            {
-              clear: both;
-            }
-            .hidden 
-            {
-                display: none;
-            }
-        </style>
+        <link href="styles.css" rel="stylesheet" />
+        <link href="js/libs/select2/select2.css" rel="stylesheet" />
 	</head>
 	<body>
-
         <div id="container">
             <div id="left">
-
-
-
                 <div id="controls">
                     <br /><label>Left Mouse: Hold to Rotate. Right Mouse: Pan. Mouse Wheel: Zoom</label>
                     <br /><label>Use left mouse or dropdown to build a route.</label>
@@ -64,12 +19,9 @@
                     <button id="tabButtonUtils" class="tabButton">Utils</button>
 
                     <div id="tabPanelPlan" class="tabPanel hidden">
-                        <br /><label>Find Shortest Route will find route between first and second selected systems.</label>
-                        <!--<br />Select System:<select id="ddlSystems"><option></option></select>-->
+                        <br /><label>Find Shortest Route will find route between first and second selected systems. Try Sol to Wolf 922.</label>                        
                         <br /><input type="hidden" id="ddlSystemsHidden" />
-                        <br /><button id="btnMoreSystems">Debugging Button</button>
                         <br /><button id="btnClearRoute">Clear Route</button>
-
                         <br /><button id="btnShortestRoute">Find Shortest Route using this jump distance:</button><input id="maxJumpDistance" type="text" style="width:40px;" value="7" />
                         <br /><label id="label1">Info:</label><label id="labelInfo"></label>                        
                         <br /><label id="label3">Distance:</label><label id="labelTotalDistance"></label>
@@ -79,7 +31,10 @@
                         </ul>
                     </div>
                     <div id="tabPanelHistory" class="tabPanel hidden">
-                        Coming soon!
+                        <br /><input type="file" id="logFile" name="logFile" />
+                        <br /><textarea id="txtFileRoutes" rows="20" cols="20"></textarea>
+                        <br /><button id="btnDisplayFileRoute" >Display as Route</button>
+                        <br /><button id="btnSaveFileRoute" >Save as Route</button>
                     </div>
                     <div id="tabPanelHeatmap" class="tabPanel hidden">
                         <br /><button id="btnGlobalHeatmap">Toggle Global Heatmap</button>
@@ -99,36 +54,30 @@
             </div>
             <div id="right">
                 <div id="renderContainer">
-
                 </div>                
             </div>
             <div class="clear"></div>
         </div>
 
-        <script src="js/jquery-2.1.1.min.js"></script>
-		<script src="js/three.min.js"></script>
-        <script src="js/controls/TrackballControls.js"></script>
-		<script src="js/controls/OrbitControls.js"></script>
+        <script src="js/libs/jquery-2.1.1.min.js"></script>
+		<script src="js/libs/three.min.js"></script>
+        <script src="js/libs/threejs-extras/controls/TrackballControls.js"></script>
+		<script src="js/libs/threejs-extras/controls/OrbitControls.js"></script>
 
-        <script src="js/Detector.js"></script>
-		<script src="js/KeyboardState.js"></script>
+        <script src="js/libs/Detector.js"></script>
+		<script src="js/libs/KeyboardState.js"></script>
         <script src="js/libs/stats.min.js"></script>
-		<script src="js/underscore-min.js"></script>			
-		<script src="gamma-data.js"></script>
-		<script src="heatmap.js"></script>
-		<script src="rares.js"></script>
-        
-        <script src="js/dijkstra-master/graph.js"></script>		        
-        <script src="js/select2.min.js"></script>
+		<script src="js/libs/underscore-min.js"></script>					      
+        <script src="js/libs/dijkstra-master/graph.js"></script>		        
+        <script src="js/libs/select2/select2.min.js"></script>
 
-        <script src="index.js"></script>
+        <script src="js/index.js"></script>
+
+	    <script src="data/eddb-systems.js"></script>        
+        <script src="data/heatmap.js"></script>
+        <script src="data/rares.js"></script>
 
         <!-- load the font files -->
         <script src="fonts/helvetiker_regular.typeface.js"></script>
-
-
-		<script>
-
-		</script>
 	</body>
 </html>
