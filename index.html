@@ -12,43 +12,34 @@
                     <br /><label>Left Mouse: Hold to Rotate. Right Mouse: Pan. Mouse Wheel: Zoom</label>
                     <br /><label>Use left mouse or dropdown to build a route.</label>
                     <br />
+					<br />
 
-                    <button id="tabButtonPlan" class="tabButton">Plan</button>
-                    <button id="tabButtonHistory" class="tabButton">History</button>
-                    <button id="tabButtonHeatmap" class="tabButton">Heatmap</button>
-                    <button id="tabButtonUtils" class="tabButton">Utils</button>
-
-                    <div id="tabPanelPlan" class="tabPanel hidden">
-                        <br /><label>Find Shortest Route will find route between first and second selected systems. Try Sol to Wolf 922.</label>                        
-                        <br /><input type="hidden" id="ddlSystemsHidden" />
-                        <br /><button id="btnClearRoute">Clear Route</button>
-                        <br /><button id="btnShortestRoute">Find Shortest Route using this jump distance:</button><input id="maxJumpDistance" type="text" style="width:40px;" value="7" />
-                        <br /><label id="label1">Info:</label><label id="labelInfo"></label>                        
-                        <br /><label id="label3">Distance:</label><label id="labelTotalDistance"></label>
-                        <br /><input type="checkbox" id="chkShowOnlyRouteSystems" />Show only Route Systems
-                        <br />
-                        <ul id="routeTable">                            
-                        </ul>
-                    </div>
-                    <div id="tabPanelHistory" class="tabPanel hidden">
-                        <br /><input type="file" id="logFile" name="logFile" />
-                        <br /><textarea id="txtFileRoutes" rows="20" cols="20"></textarea>
-                        <br /><button id="btnDisplayFileRoute" >Display as Route</button>
-                        <br /><button id="btnSaveFileRoute" >Save as Route</button>
-                    </div>
-                    <div id="tabPanelHeatmap" class="tabPanel hidden">
-                        <br /><button id="btnGlobalHeatmap">Toggle Global Heatmap</button>
-                        <br />
-                        <div>
-                        <ul id="heatmapTable">                            
-                        </ul>
+                    <ul class="tabs-menu">
+                        <li><a href="#tabPanelPlan" id="firstTab">Plan</a></li>
+                        <li><a href="#tabPanelUtils">Utilities</a></li>
+                    </ul>
+                    
+                    <div class="tab clear">
+                        <div id="tabPanelPlan" class="tab-content">
+                            <br /><label>Find Shortest Route will find route between first and second selected systems.</label>
+                            <br /><label>Try Sol to Wolf 922.</label>
+                            <br /><input type="hidden" id="ddlSystemsHidden" />
+                            <br /><button id="btnClearRoute">Clear Route</button>
+                            <br /><button id="btnShortestRoute">Find Shortest Route using this jump distance:</button><input id="maxJumpDistance" type="text" style="width:40px;" value="7" />
+                            <br /><label id="label1">Info:</label><label id="labelInfo"></label>
+                            <br /><label id="label3">Distance:</label><label id="labelTotalDistance"></label>
+                            <br /><input type="checkbox" id="chkShowOnlyRouteSystems" /><label for="chkShowOnlyRouteSystems">Show only Route Systems</label>
+                            <br />
+                            <ul id="routeTable"></ul>
                         </div>
-
-                    </div>
-                    <div id="tabPanelUtils" class="tabPanel hidden">
-                    	<br /><button id="btnRares">Toggle Rares Display</button>
-                        <br /><button id="btnDistanceDump">Distance Dump</button>
-                        <br /><textarea id="txtDistances" rows="4" cols="50" style="display:none;"></textarea>
+                        <div id="tabPanelUtils" class="tab-content">
+                            <br /><button id="btnRares">Toggle Rares Display</button>
+                            <br /><button id="btnGlobalHeatmap">Toggle Global Heatmap</button>
+                            <br />
+                            <div>
+                                <ul id="heatmapTable"></ul>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -71,6 +62,10 @@
         <script src="js/libs/dijkstra-master/graph.js"></script>		        
         <script src="js/libs/select2/select2.min.js"></script>
 
+        <script src="js/renderAssets.js"></script>        
+        <script src="js/sceneBuilder.js"></script>
+        <script src="js/renderer.js"></script>
+        <script src="js/gui.js"></script>
         <script src="js/index.js"></script>
 
 	    <script src="data/eddb-systems.js"></script>        
