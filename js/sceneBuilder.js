@@ -55,7 +55,7 @@ window.GalaxyMapSceneBuilder = (function (renderAssets) {
         return null;
     };
 
-    var findShortestRouteBetweenTwoPoints = function (maxJumpDistance, start, end) {
+    var findShortestRouteBetweenTwoPoints = function(maxJumpDistance, start, end) {
 
         maxJumpDistance = +maxJumpDistance; // force to int
         var currentDistanceCheck = maxJumpDistance;
@@ -77,14 +77,14 @@ window.GalaxyMapSceneBuilder = (function (renderAssets) {
                 $('#labelInfo').text('Could not make trip with ' + maxJumpDistance + 'LY jump, but found a route with ' + currentDistanceCheck + 'LY jumps');
             } else {
                 $('#labelInfo').text('Route found.');
-            }            
+            }
         } else {
             $('#labelInfo').text('Cannot make this trip');
             $('#labelTotalDistance').text("");
         }
 
         return routeInfo
-    }
+    };
 
     var calcShortestRoute = function (maxJumpDistance, start, end) {
 
@@ -121,7 +121,7 @@ window.GalaxyMapSceneBuilder = (function (renderAssets) {
             }
         }
         return distances;
-    }
+    };
 
     function buildMap(distanceDump, maxJumpDistance) {
         var map = {};
@@ -139,7 +139,7 @@ window.GalaxyMapSceneBuilder = (function (renderAssets) {
             }
         }
         return map;
-    }
+    };
 
     var distanceDumper = function (systemsToProcess) {
         var dump = [];
@@ -153,26 +153,26 @@ window.GalaxyMapSceneBuilder = (function (renderAssets) {
         return dump;
     };
 
-    var getSystemsInScene = function (scene) {
+    var getSystemsInScene = function(scene) {
         var toReturn = [];
-        $.each(scene.children, function (index, value) {
+        $.each(scene.children, function(index, value) {
             if (value.meshType == 'sphere') {
                 toReturn.push(value);
             }
         });
         return toReturn;
-    }
+    };
 
-    var findSystemInScene = function (systemName, meshType) {
+    var findSystemInScene = function(systemName, meshType) {
         var toReturn = null;
-        $.each(scene.children, function (index, value) {
+        $.each(scene.children, function(index, value) {
             if (value.meshType == meshType && value.sysInfo.system == systemName) {
                 toReturn = value;
                 return false;
             }
         });
         return toReturn;
-    }
+    };
 
     var calculateDistance = function (first, second) {
         // d = sqrt((x2-x1)^2 + (y2-y1)^2 + (z2-z1)^2)
@@ -253,10 +253,12 @@ window.GalaxyMapSceneBuilder = (function (renderAssets) {
 
         addGalaxyPointCloudToScene();
 
+        ensureProximalObjectsCreated('Sol', 10);
+
         return scene;
     };
 
-    var addGalaxyPointCloudToScene = function () {
+    var addGalaxyPointCloudToScene = function() {
         var geometry = generatePointCloudGeometry(new THREE.Color(1, 0, 0), galaxyData);
         var material = new THREE.PointCloudMaterial({ size: 0.05, vertexColors: THREE.VertexColors });
         var pointcloud = new THREE.PointCloud(geometry, material);
@@ -264,7 +266,7 @@ window.GalaxyMapSceneBuilder = (function (renderAssets) {
         pointcloud.scale.set(1, 1, 1);
         pointcloud.position.set(0, 0, 0);
         scene.add(pointcloud);
-    }
+    };
 
     var generatePointCloudGeometry = function (color, sysInfo) {
 
@@ -326,11 +328,11 @@ window.GalaxyMapSceneBuilder = (function (renderAssets) {
         return mesh;
     };
 
-    var applySelectionToSystem = function (systemName) {
+    var applySelectionToSystem = function(systemName) {
         ensureProximalObjectsCreated(systemName, 30);
         selectSceneObject(systemName);
         displayDistance();
-    }
+    };
 
     var readGalaxyData = function() {
 
@@ -352,11 +354,11 @@ window.GalaxyMapSceneBuilder = (function (renderAssets) {
         if (useBillboards) {
             // Billboard sprites for names. 
             var spritey = makeTextSprite(singleSystem.system,
-                {
-                    fontsize: 32,
-                    fontface: "helvetiker",
-                    borderColor: { r: 0, g: 0, b: 255, a: 1.0 }
-                });
+            {
+                fontsize: 32,
+                fontface: "helvetiker",
+                borderColor: { r: 0, g: 0, b: 255, a: 1.0 }
+            });
             spritey.position.set(singleSystem.x * scale, singleSystem.y * scale, singleSystem.z * scale);
             spritey.sysInfo = singleSystem;
             scene.add(spritey);
@@ -387,19 +389,19 @@ window.GalaxyMapSceneBuilder = (function (renderAssets) {
 
             scene.add(labelMesh);
         }
-    }
+    };
 
     var addSingleSystemToScene = function(singleSystem) {
 
         var mesh = addSphere(singleSystem, 'sphere', plainSphereGeometry, renderAssets.materials.unselectedMaterial);
 
         addText(singleSystem, mesh);
-    }
+    };
 
-    var displayDistance = function () {
+    var displayDistance = function() {
 
         var totalDistance = 0;
-        $.each(routeSelections, function (index, value) {
+        $.each(routeSelections, function(index, value) {
             if (routeSelections.length > 1 && index < routeSelections.length - 1) {
                 var d = calculateDistance(routeSelections[index].sysInfo, routeSelections[index + 1].sysInfo);
                 totalDistance += +d;
@@ -407,18 +409,7 @@ window.GalaxyMapSceneBuilder = (function (renderAssets) {
         });
 
         $('#labelTotalDistance').text(totalDistance.toFixed(2));
-    }
-
-    // todo why not used?
-    var displayRoute = function() {
-        var totalRoute = '';
-        $.each(routeSelections, function (index, value) {
-            totalRoute += routeSelections[index].sysInfo.system + ' -> ';
-        });
-
-        var trimmed = totalRoute.substring(0, totalRoute.length - 4);
-        $('#labelRoute').text(trimmed);
-    }
+    };
 
     var selectSceneObject = function(systemName) {
         var found = findSystemInScene(systemName, 'sphere');
@@ -446,6 +437,16 @@ window.GalaxyMapSceneBuilder = (function (renderAssets) {
             if (mesh.sisterMesh)
                 mesh.sisterMesh.material = mesh.material;
         }
+    };
+
+    var getRoute = function () {
+        var totalRoute = '';
+        $.each(routeSelections, function (index, value) {
+            totalRoute += routeSelections[index].sysInfo.system + ' -> ';
+        });
+
+        var trimmedRoute = totalRoute.substring(0, totalRoute.length - 4);
+        return trimmedRoute;
     };
 
     var clearRoute = function() {
@@ -535,7 +536,8 @@ window.GalaxyMapSceneBuilder = (function (renderAssets) {
         firstIntersectingObject: firstIntersectingObject,
         getHeatmapSphereGeometry: getHeatmapSphereGeometry,        
         showOnlyRouteSystems: showOnlyRouteSystems,
-        clearRoute: clearRoute
+        clearRoute: clearRoute,
+        getRoute: getRoute
     }
 
 })(window.GalaxyMapRenderAssets);

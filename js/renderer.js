@@ -59,10 +59,10 @@ window.GalaxyMapRenderer = (function (sceneBuilder, renderAssets) {
         }
     };
 
-    var renderHeatmapInfo = function (info, makeVisible, galaxyData) {
+    var renderHeatmapInfo = function(info, makeVisible, galaxyData) {
         var heatmapGeometry = sceneBuilder.getHeatmapSphereGeometry(info.marker.radius * getRadiusModifier(info.marker.radius, info.marker.visits));
         renderAssets.materials.heatmapMaterial = getHeatmapSphereMaterial(info.marker.visits);
-        var foundInData = _.find(galaxyData, function (o) { return o.system == info.name });
+        var foundInData = _.find(galaxyData, function(o) { return o.system == info.name });
         if (foundInData) {
             var foundInScene = sceneBuilder.findSystemInScene(info.name, 'heatmapSphere');
             if (foundInScene != null) {
@@ -71,23 +71,23 @@ window.GalaxyMapRenderer = (function (sceneBuilder, renderAssets) {
                 sceneBuilder.addSphere(foundInData, 'heatmapSphere', heatmapGeometry, renderAssets.materials.heatmapMaterial)
             }
         }
-    }
+    };
 
-    var getHeatmapSphereMaterial = function (visits) {
+    var getHeatmapSphereMaterial = function(visits) {
         var visitsColor = getColorForHeatmapVisits(visits);
-        var existing = _.find(heatmapSphereMaterialMap, function (o) { return o.visitsColor == visitsColor });
+        var existing = _.find(heatmapSphereMaterialMap, function(o) { return o.visitsColor == visitsColor });
         if (existing)
             return existing;
         var cloned = renderAssets.materials.heatmapMaterial.clone();
         cloned.setValues({ color: visitsColor });
         heatmapSphereMaterialMap[visitsColor] = cloned;
         return cloned;
-    }
+    };
     
     var yellowCutoff = 10;
     var redCutoff = 90;
 
-    var getColorForHeatmapVisits = function (visits) {
+    var getColorForHeatmapVisits = function(visits) {
 
         if (visits >= redCutoff)
             return renderAssets.materialColors.redColor;
@@ -95,16 +95,16 @@ window.GalaxyMapRenderer = (function (sceneBuilder, renderAssets) {
             return renderAssets.materialColors.yellowColor;
 
         return renderAssets.materialColors.greenColor;
-    }
+    };
 
-    var getRadiusModifier = function (radius, visits) {
+    var getRadiusModifier = function(radius, visits) {
         if (visits >= redCutoff)
             return 2.5;
         if (visits >= yellowCutoff && visits < redCutoff)
             return 1.2;
 
         return 1.8;
-    }
+    };
 
     var drawLinesForShortestPath = function(shortestPath) {
         // experimental line drawing

@@ -6,9 +6,10 @@ window.GalaxyMapGui = (function (sceneBuilder, renderer) {
     var mouse = { x: 0, y: 0 };
     var keyboard = new KeyboardState();
     var scene, camera, controls, container;
-    var currentIntersectingObject = {};
+    var currentIntersectingObject = {};    
    
-    var init = function () {       
+    var init = function () {
+        
         container = document.getElementById('renderContainer');
 
         scene = sceneBuilder.initScene()
@@ -44,11 +45,15 @@ window.GalaxyMapGui = (function (sceneBuilder, renderer) {
         }
     };
 
-    var render = function () {
+    var render = function() {
         renderer.render(scene, camera);
-    }
+    };
 
     var attachHandlers = function() {
+
+        $("#overlay").one('click', function () {
+            removeOverlay();
+        });
 
         $('.tabs-menu a').click(function (event) {
             event.preventDefault();
@@ -101,6 +106,7 @@ window.GalaxyMapGui = (function (sceneBuilder, renderer) {
         $("#ddlSystemsHidden").change(function (e) {
             var systemName = e.val;
             sceneBuilder.applySelectionToSystem(systemName);
+            displayRoute();
         });
 
         // when the mouse moves, call the given function
@@ -149,7 +155,7 @@ window.GalaxyMapGui = (function (sceneBuilder, renderer) {
         controls = new THREE.OrbitControls(camera);
         controls.damping = 0.2;
         controls.addEventListener('change', render);
-    }
+    };
 
     var handleTabClick = function(clickedTab) {
 	
@@ -157,22 +163,22 @@ window.GalaxyMapGui = (function (sceneBuilder, renderer) {
         clickedTab.parent().siblings().removeClass("currentTab");
         var tab = clickedTab.attr("href");
         $(".tab-content").not(tab).css("display", "none");
-        //$(tab).fadeIn();
         $(tab).show();
     };
 
     var handlePossibleSelection = function() {
         if (currentIntersectingObject && currentIntersectingObject.visible) {
             var systemName = currentIntersectingObject.sysInfo.system;
-            sceneBuilder.applySelectionToSystem(systemName);            
+            sceneBuilder.applySelectionToSystem(systemName);
+            displayRoute();
         }
     };
 
-    var onDocumentMouseDown = function (event) {
+    var onDocumentMouseDown = function(event) {
         handlePossibleSelection();
-    }
+    };
 
-    var onDocumentMouseMove = function (event) {
+    var onDocumentMouseMove = function(event) {
         // the following line would stop any other event handler from firing
         // (such as the mouse's TrackballControls)
         // event.preventDefault();
@@ -181,9 +187,9 @@ window.GalaxyMapGui = (function (sceneBuilder, renderer) {
         mouse.x = (((event.clientX - windowOffset) / container.offsetWidth)) * 2 - 1;
         mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
 
-    }
+    };
 
-    var onWindowResize = function () {
+    var onWindowResize = function() {
 
         camera.aspect = window.innerWidth / window.innerHeight;
         camera.updateProjectionMatrix();
@@ -191,9 +197,9 @@ window.GalaxyMapGui = (function (sceneBuilder, renderer) {
         renderer.setSize(window.innerWidth, window.innerHeight);
 
         //controls.handleResize();
-    }
-    
-    var updateHeatmapTable = function (heatmapData, makeVisible) {
+    };
+
+    var updateHeatmapTable = function(heatmapData, makeVisible) {
         if (!makeVisible) {
             $("#heatmapTable").empty();
         } else {
@@ -204,7 +210,7 @@ window.GalaxyMapGui = (function (sceneBuilder, renderer) {
                 $('#heatmapTable').append('<li>' + systemName + '...  ' + visits + '</li>');
             }
         }
-    }
+    };
 
     var updateRouteTable = function (routeInfo) {
         if (routeInfo == null) {
@@ -227,16 +233,24 @@ window.GalaxyMapGui = (function (sceneBuilder, renderer) {
         });
     };
 
-    var toggleGlobalHeatmapDisplay = function () {
+    var toggleGlobalHeatmapDisplay = function() {
         globalHeatmapVisible = !globalHeatmapVisible;
-        $.each(fakeHeatmapData, function (index, value) {
+        $.each(fakeHeatmapData, function(index, value) {
             if (globalHeatmapVisible) {
                 sceneBuilder.ensureProximalObjectsCreated(value.name, 1);
             }
             renderer.renderHeatmapInfo(value, globalHeatmapVisible, sceneBuilder.galaxyData());
         });
         updateHeatmapTable(fakeHeatmapData, globalHeatmapVisible);
-    }
+    };
+
+    var displayRoute = function() {
+        $('#labelInfo').text(sceneBuilder.getRoute());
+    };
+
+    var removeOverlay = function() {
+        $("#overlay").remove();
+    };
 
     return {
         init: init

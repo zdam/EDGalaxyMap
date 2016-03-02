@@ -6,51 +6,65 @@
         <link href="js/libs/select2/select2.css" rel="stylesheet" />
 	</head>
 	<body>
-        <div id="container">
-            <div id="left">
-                <div id="controls">
-                    <br /><label>Left Mouse: Hold to Rotate. Right Mouse: Pan. Mouse Wheel: Zoom</label>
-                    <br /><label>Use left mouse or dropdown to build a route.</label>
-                    <br />
-					<br />
+	<div id="container">
+	    <div id="left">
+	        <div id="controls">
+	            <br/><label>Left Mouse: Hold to Rotate.</label>
+	            <br/><label>Right Mouse: Pan.</label>
+	            <br/><label>Mouse Wheel: Zoom</label>
+	            <br/><label>Use left mouse or dropdown to build a route.</label>
+	            <br/>
+	            <br/>
 
-                    <ul class="tabs-menu">
-                        <li><a href="#tabPanelPlan" id="firstTab">Plan</a></li>
-                        <li><a href="#tabPanelUtils">Utilities</a></li>
-                    </ul>
-                    
-                    <div class="tab clear">
-                        <div id="tabPanelPlan" class="tab-content">
-                            <br /><label>Find Shortest Route will find the route between selected systems.</label>
-                            <br /><label>Try Sol to Wolf 922.</label>
-                            <br /><input type="hidden" id="ddlSystemsHidden" />
-                            <br /><button id="btnClearRoute">Clear Route</button>
-                            <br /><button id="btnShortestRoute">Find Shortest Route using this jump distance:</button><input id="maxJumpDistance" type="text" style="width:40px;" value="7" />
-                            <br /><label id="label1">Info:</label><label id="labelInfo"></label>
-                            <br /><label id="label3">Distance:</label><label id="labelTotalDistance"></label>
-                            <br /><input type="checkbox" id="chkShowOnlyRouteSystems" /><label for="chkShowOnlyRouteSystems">Show only Route Systems</label>
-                            <br />
-                            <ul id="routeTable"></ul>
-                        </div>
-                        <div id="tabPanelUtils" class="tab-content">
-                            <br /><button id="btnRares">Toggle Rares Display</button>
-                            <br /><button id="btnGlobalHeatmap">Toggle Global Heatmap</button>
-                            <br />
-                            <div>
-                                <ul id="heatmapTable"></ul>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            <div id="right">
-                <div id="renderContainer">
-                </div>                
-            </div>
-            <div class="clear"></div>
-        </div>
+	            <ul class="tabs-menu">
+	                <li><a href="#tabPanelPlan" id="firstTab" class="currentTab">Plan</a></li>
+	                <li><a href="#tabPanelUtils">Utilities</a></li>
+	            </ul>
 
-        <script src="js/libs/jquery-2.1.1.min.js"></script>
+	            <div class="tab clear">
+	                <div id="tabPanelPlan" class="tab-content">
+	                    <br/><label>Find Shortest Route will find the route between selected systems.</label>
+	                    <br/><label>Try Sol to Wolf 922.</label>
+	                    <br/><input type="hidden" id="ddlSystemsHidden"/>
+	                    <br/><button id="btnClearRoute">Clear Route</button>
+	                    <br/><button id="btnShortestRoute">Find Shortest Route using this jump distance:</button><input id="maxJumpDistance" type="text" style="width: 40px;" value="7"/>
+	                    <br/><label id="label1">Info:</label><label id="labelInfo"></label>
+	                    <br/><label id="label3">Distance:</label><label id="labelTotalDistance"></label>
+	                    <br/><input type="checkbox" id="chkShowOnlyRouteSystems"/><label for="chkShowOnlyRouteSystems">Show only Route Systems</label>
+	                    <br/>
+	                    <ul id="routeTable"></ul>
+	                </div>
+	                <div id="tabPanelUtils" class="tab-content">
+	                    <br/><button id="btnRares">Toggle Rares Display</button>
+	                    <br/><button id="btnGlobalHeatmap">Toggle Global Heatmap</button>
+	                    <br/>
+	                    <div>
+	                        <ul id="heatmapTable"></ul>
+	                    </div>
+	                </div>
+	            </div>
+	        </div>
+	    </div>
+	    <div id="right">
+	        <div id="renderContainer">
+	        </div>
+	    </div>
+	    <div class="clear"></div>
+	</div>
+
+	<div id="overlay">
+	    <div>
+            <h1>Elite Dangerous Galaxy Map.</h1></div>
+	    <hr/>
+        <div>This is a point cloud of star systems in the Elite Dangerous Galaxy.</div>
+        <div>Every point is a system that can be visited.</div>
+	    <div>Mouse to Rotate/Pan/Zoom.</div>
+	    <div>Clicking a system will reveal the names of nearby systems.</div>
+        <div>You can plot a route between systems by clicking systems or entering their names in the dropdown.</div>
+	    
+	</div>
+
+	<script src="js/libs/jquery-2.1.1.min.js"></script>
 		<script src="js/libs/three.min.js"></script>
         <script src="js/libs/threejs-extras/controls/TrackballControls.js"></script>
 		<script src="js/libs/threejs-extras/controls/OrbitControls.js"></script>
@@ -62,7 +76,8 @@
         <script src="js/libs/dijkstra-master/graph.js"></script>		        
         <script src="js/libs/select2/select2.min.js"></script>
 
-        <script src="js/renderAssets.js"></script>        
+        <!-- The app itself. index.js is the entry point -->
+	    <script src="js/renderAssets.js"></script>        
         <script src="js/sceneBuilder.js"></script>
         <script src="js/renderer.js"></script>
         <script src="js/gui.js"></script>
